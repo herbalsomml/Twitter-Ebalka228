@@ -105,7 +105,7 @@ async def get_link_to_promote(twttr_client:TwttrAPIClient, account: Account, wor
             add_message("Не удалось получить ссылку", account.screen_name, account.color, "error", worker_name)
             return False
         
-        if pinned_tweet_id:
+        if pinned_tweet_id and len(pinned_tweet_id) > 0:
             link = f"https://x.com/{account.screen_name}/status/{pinned_tweet_id}"
 
     return link
