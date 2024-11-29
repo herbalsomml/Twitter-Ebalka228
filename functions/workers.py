@@ -106,7 +106,7 @@ async def get_link_to_promote(twttr_client:TwttrAPIClient, account: Account, wor
             return False
         
         if pinned_tweet_id and len(pinned_tweet_id) > 0:
-            link = f"https://x.com/{account.screen_name}/status/{pinned_tweet_id}"
+            link = f"https://x.com/{account.screen_name}/status/{pinned_tweet_id[0]}"
 
     return link
 
