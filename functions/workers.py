@@ -112,18 +112,18 @@ async def get_link_to_promote(twttr_client:TwttrAPIClient, account: Account, wor
 
 
 async def get_message_text(link:str, account:Account, inbox:bool=False, new:bool=False, no_tweet:bool=False, did_pinned:bool=False):
-    text = f"{random.choice(account.settings.text_for_exist) if len(account.settings.text_for_exist) > 0 else "Hello! RTxRT?"}\n\n"
+    text = f"{random.choice(account.settings.text_for_exist) if len(account.settings.text_for_exist) > 0 else 'Hello! RTxRT?'}\n\n"
     pinned = ""
     fake = ""
 
     if inbox:
-        text = f"{random.choice(account.settings.text_for_inbox) if len(account.settings.text_for_inbox) > 0 else "Okay! But you first!"}"
+        text = f"{random.choice(account.settings.text_for_inbox) if len(account.settings.text_for_inbox) > 0 else 'Okay! But you first!'}"
     elif new:
-        text = f"{random.choice(account.settings.text_for_new) if len(account.settings.text_for_new) > 0 else "Hello! RTxRT?"}"
+        text = f"{random.choice(account.settings.text_for_new) if len(account.settings.text_for_new) > 0 else 'Hello! RTxRT?'}"
     elif no_tweet:
-        text = f"{random.choice(account.settings.text_for_no_tweet) if len(account.settings.text_for_no_tweet) > 0 else "Sorry, i havent found tweet in your message/pinned. Send it again please!"}"
+        text = f"{random.choice(account.settings.text_for_no_tweet) if len(account.settings.text_for_no_tweet) > 0 else 'Sorry, i havent found tweet in your message/pinned. Send it again please!'}"
     elif did_pinned:
-        text = f"{random.choice(account.settings.text_if_did_pinned) if len(account.settings.text_if_did_pinned) > 0 else "I did your pinned!"}"
+        text = f"{random.choice(account.settings.text_if_did_pinned) if len(account.settings.text_if_did_pinned) > 0 else 'I did your pinned!'}"
     
     if len(account.settings.text_for_pinned) > 0:
         pinned = f"\n\n{random.choice(account.settings.text_for_pinned)}\n"

@@ -3,7 +3,6 @@ import random
 
 import requests
 from colorama import Fore, Style
-from PIL import Image
 from rich.console import Console
 
 from settings import telegram_bot_api_key, telegram_ids
@@ -35,36 +34,12 @@ def send_telegram_message(message, account_name:str=None):
         except Exception as e:
             add_message(f"Ошибка при отправке сообщения в телеграм: {e}", type="error")
 
-    
-
 
 async def wait_delay(sec:int = 10, min_sec:int = None, max_sec:int = None, worker_name:str=None):
     if min_sec is not None and max_sec is not None:
         sec = random.randint(min_sec, max_sec)
     
     await asyncio.sleep(sec)
-
-
-def pixel_to_color(r, g, b):
-    return f"rgb({r},{g},{b})"
-
-
-def display_image_in_terminal(image_path, max_width=80):
-    img = Image.open(image_path)
-    width, height = img.size
-    new_height = int(height * (max_width / width) * 0.5)
-    img = img.resize((max_width, new_height))
-    img = img.convert("RGB")
-
-    console = Console()
-
-    for y in range(img.height):
-        line = ""
-        for x in range(img.width):
-            r, g, b = img.getpixel((x, y))
-            color_code = pixel_to_color(r, g, b)
-            line += f"[{color_code}]█[/]"
-        console.print(line)    
 
 
 def hex_to_rgb(hex_color: str):
