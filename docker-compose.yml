@@ -1,5 +1,8 @@
 version: '3.8'
 
+volumes:
+  databases_volume: 
+
 services:
   bot:
     build: .
@@ -7,6 +10,7 @@ services:
     restart: always
     volumes:
       - .:/app
+      - databases_volume:/app/databases
     environment:
-      - PYTHONUNBUFFERED=1 
+      - PYTHONUNBUFFERED=1
     command: python main.py
