@@ -27,8 +27,8 @@ MODEL_MARKERS = [
 ]
 
 MANAGER_NICKNAME = [
-    "t.me/wc_world_owner",
-    "@wc_world_owner"
+    "t.me/ihatemylifebutiluvmoney",
+    "@ihatemylifebutiluvmoney"
 ]
 
 SOCIAL = [
