@@ -124,6 +124,24 @@ async def is_tweet_did(account, tweet_id: int) -> bool:
         return False
 
 
+async def is_user_in_db(account: Account, user_id: int, worker_name: str = None) -> bool:
+    try:
+        async with aiosqlite.connect(f"databases/{account.id}.db") as db:
+            query = """
+            SELECT 1 
+            FROM interactions 
+            WHERE user_id = ?;
+            """
+            async with db.execute(query, (user_id,)) as cursor:
+                result = await cursor.fetchone()
+                if result is not None:
+                    return True
+                else:
+                    return False
+    except Exception as e:
+        return False
+
+
 async def is_user_in_blacklist(account: Account, user_id: int, worker_name: str = None) -> bool:
     try:
         async with aiosqlite.connect(f"databases/bad_users.db") as db:

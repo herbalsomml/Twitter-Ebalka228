@@ -8,7 +8,7 @@ from functions.basic import add_message, send_telegram_message, wait_delay
 from functions.data import (get_conversation_last_links, get_interlocutor_id,
                             get_user_from_user_list)
 from functions.database import (add_tweet_to_db, has_enough_time_passed,
-                                is_user_in_blacklist)
+                                is_user_in_blacklist, is_user_in_db)
 from functions.workers import (add_tweet_to_line, check_banned_status,
                                check_tweet, check_user,
                                check_user_for_critical, cooldown, do_action,
@@ -30,18 +30,24 @@ async def dm_worker(twttr_client: TwttrAPIClient, utools_client: uToolsAPIClient
         if not id_for_pagination:
             return False
         
-        link = await get_link_to_promote(twttr_client, account, WORKER_NAME)
-        if not link:
-            return False
+        if len(account.settings.links) < 1:
+            link = await get_link_to_promote(twttr_client, account, WORKER_NAME)
 
         if len(conversations) < 1:
             no_msg += 1
+        else:
+            no_msg = 0
 
         if no_msg >= account.settings.skip_after_empty_pages:
             return True
 
         for conversation in conversations:
             await cooldown(account, WORKER_NAME)
+            if len(account.settings.links) >= 1:
+                link = await get_link_to_promote(twttr_client, account, WORKER_NAME)
+            if not link:
+                return False
+
            # await wait_delay(min_sec=account.settings.min_actions_delay, max_sec=account.settings.max_actions_delay, worker_name=WORKER_NAME)
             if conversation.type == "GROUP_DM" and account.settings.skip_groups:
                 continue
@@ -121,13 +127,19 @@ async def new_users_worker(twttr_client: TwttrAPIClient, account: Account, WORKE
         account.tweets_for_work.remove(tweet)
         cursor = ""
 
-        link = await get_link_to_promote(twttr_client, account, WORKER_NAME)
-        if not link:
-            return
+        if len(account.settings.links) < 1:
+            link = await get_link_to_promote(twttr_client, account, WORKER_NAME)
+        
 
         while True:
             cursor, users = await get_reposted_timeline(twttr_client, account, tweet.id, cursor, WORKER_NAME)
             for user in users:
+                if len(account.settings.links) >= 1:
+                    link = await get_link_to_promote(twttr_client, account, WORKER_NAME)
+
+                if not link:
+                    return
+
                 if not await check_user(user, account):
                     continue
                     
@@ -138,7 +150,9 @@ async def new_users_worker(twttr_client: TwttrAPIClient, account: Account, WORKE
 
                 await check_banned_status(account)
                 await cooldown(account, WORKER_NAME)
-                if await check_if_messages_in_conversation(twttr_client, account, user_id=user.id, worker_name=WORKER_NAME):
+
+                if await is_user_in_db(account, user.id, WORKER_NAME):
+                #if await check_if_messages_in_conversation(twttr_client, account, user_id=user.id, worker_name=WORKER_NAME):
                     if not await has_enough_time_passed(account, user.id, account.settings.minutes_before_attempt_for_new_dm):
                         continue
 
