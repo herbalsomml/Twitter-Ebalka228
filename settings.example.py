@@ -89,7 +89,7 @@ settings = Settings(
     check_retweets=True,
     skip_readed=True,
     skip_groups=True,
-    kip_inbox=True,
+    skip_inbox=True,
 
     text_for_inbox=text_for_inbox,
     text_for_pinned=text_for_pinned,
@@ -115,7 +115,7 @@ settings = Settings(
 ### Аккаунты ###
 ################
 account = Account(
-    'Прокси без протокола',
+    "Прокси без протокола",
     "screen_name",
     "сессия twttr_api",
     "auth_token",

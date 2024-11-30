@@ -206,6 +206,7 @@ async def do_action(twttr_client:TwttrAPIClient, account:Account, action:tuple):
         await retweet(twttr_client, account, rt_id)
 
     if msg and user_id:
+        await wait_delay(min_sec=account.settings.min_actions_delay, max_sec=account.settings.min_actions_delay)
         await send_dm(twttr_client, account, msg, user_id=user_id)
 
     if ban_id:
