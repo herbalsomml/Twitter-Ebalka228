@@ -185,6 +185,10 @@ async def action_maker_worker(twttr_client: TwttrAPIClient, account: Account, WO
             await check_banned_status(account)
             await cooldown(account, WORKER_NAME)
             action = account.dm_actions.pop(0)
+            if account.settings.new_user_only_after_exist:
+                account.actions_counter += 1
+
+        if not account.settings.new_user_only_after_exist:
             account.actions_counter += 1
 
         action_status =  await do_action(twttr_client, account, action)

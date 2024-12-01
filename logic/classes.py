@@ -16,6 +16,7 @@ class Settings:
                  min_reply_count_to_work:int=0,
                  min_retweet_count_to_work:int=0,
                  min_tweet_views_to_work:int=0,
+                 new_user_only_after_exist:bool=False,
 
                  banned_words_in_tweet:list=[],
                  skip_lang:list=[],
@@ -54,6 +55,7 @@ class Settings:
         self.skip_after_empty_pages = skip_after_empty_pages
         self.actions_steps = actions_steps
         self.cooldown_every_steps = cooldown_every_steps
+        self.new_user_only_after_exist = new_user_only_after_exist
         
         ## Ограничители
         self.followers_to_work = followers_to_work
