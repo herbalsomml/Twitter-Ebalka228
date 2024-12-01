@@ -130,7 +130,6 @@ async def new_users_worker(twttr_client: TwttrAPIClient, account: Account, WORKE
 
         if len(account.settings.links) < 1:
             link = await get_link_to_promote(twttr_client, account, WORKER_NAME)
-        
 
         while True:
             cursor, users = await get_reposted_timeline(twttr_client, account, tweet.id, cursor, WORKER_NAME)
@@ -186,8 +185,8 @@ async def action_maker_worker(twttr_client: TwttrAPIClient, account: Account, WO
             await check_banned_status(account)
             await cooldown(account, WORKER_NAME)
             action = account.dm_actions.pop(0)
+            account.actions_counter += 1
 
-        account.actions_counter += 1
         action_status =  await do_action(twttr_client, account, action)
         if action_status:
             account.done_actions_counter += 1

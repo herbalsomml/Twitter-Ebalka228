@@ -189,7 +189,7 @@ async def new_action(account:Account, message:str=None, user_id:int=None, unrt_i
             await wait_delay(10)
 
 
-async def do_action(twttr_client:TwttrAPIClient, account:Account, action:tuple):
+async def do_action(twttr_client:TwttrAPIClient, account:Account, action):
     if not action:
         return False
 
