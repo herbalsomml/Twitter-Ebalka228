@@ -75,6 +75,8 @@ async def dm_worker(twttr_client: TwttrAPIClient, utools_client: uToolsAPIClient
                 link = await get_link_to_promote(twttr_client, account, WORKER_NAME)
             if not link:
                 return False
+            
+            no_msg = 0
 
             if not tweet:
                 user.pinned_tweet = await get_pinned_tweet(twttr_client, account, user)
@@ -92,8 +94,7 @@ async def dm_worker(twttr_client: TwttrAPIClient, utools_client: uToolsAPIClient
                 if account.settings.ban_id_bad_post:
                     await new_action(account=account, message=None, user_id=None, rt_id=None,unrt_id=None, ban_id=user_id,)
                 continue
-            
-            no_msg = 0
+
             message = await get_message_text(link, account)
             await new_action(account=account, message=message, user_id=user_id, rt_id=tweet.id, unrt_id=tweet.id if tweet.retweeted else None, ban_id=None)
 
