@@ -95,7 +95,6 @@ async def check_user_for_critical(user, account):
 
  
 async def get_link_to_promote(twttr_client:TwttrAPIClient, account: Account, worker_name:str=None):
-    add_message("Получаю ссылку для промоутинга", account.screen_name, account.color, "log", worker_name)
     if len(account.settings.links) > 0:
         link = random.choice(account.settings.links)
     else:
