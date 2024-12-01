@@ -35,8 +35,6 @@ async def dm_worker(twttr_client: TwttrAPIClient, utools_client: uToolsAPIClient
 
         if len(conversations) < 1:
             no_msg += 1
-        else:
-            no_msg = 0
 
         if no_msg >= account.settings.skip_after_empty_pages:
             return True
@@ -94,7 +92,8 @@ async def dm_worker(twttr_client: TwttrAPIClient, utools_client: uToolsAPIClient
                 if account.settings.ban_id_bad_post:
                     await new_action(account=account, message=None, user_id=None, rt_id=None,unrt_id=None, ban_id=user_id,)
                 continue
-
+            
+            no_msg = 0
             message = await get_message_text(link, account)
             await new_action(account=account, message=message, user_id=user_id, rt_id=tweet.id, unrt_id=tweet.id if tweet.retweeted else None, ban_id=None)
 
