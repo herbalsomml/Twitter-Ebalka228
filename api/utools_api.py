@@ -56,7 +56,7 @@ class uToolsAPIClient:
                     return d
 
             except aiohttp.ClientResponseError as e:
-                raise Error(f"HTTP Error: {e}", response.status)
+                raise Error(f"HTTP Error: {e}")
 
             except (aiohttp.ClientConnectorError, asyncio.TimeoutError) as e:
                 add_message(f"Connection error: {e}. Retrying in {self.retry_backoff ** retries} seconds...", self.account.screen_name, self.account.color, "warning")

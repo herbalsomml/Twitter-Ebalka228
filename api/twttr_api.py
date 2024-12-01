@@ -53,7 +53,12 @@ class TwttrAPIClient:
                             raise Error(d.get("error"))
                         return d
                     except aiohttp.ClientResponseError as e:
-                        raise Error(f"HTTP Error: {e}", response.status)
+                        if "Forbidden" in str(e):
+                            add_message(f"Forbidden. Проверьте auth_token или API", self.account.screen_name, self.account.color, "error")
+                            await asyncio.sleep(self.retry_backoff ** retries)
+                            retries += 1
+                        else:
+                            raise Error(f"HTTP Error: {e}")
                     except (aiohttp.ClientConnectorError, asyncio.TimeoutError) as e:
                         add_message(f"Connection error: {e}. Retrying in {self.retry_backoff ** retries} seconds...", self.account.screen_name, self.account.color, "warning")
                         await asyncio.sleep(self.retry_backoff ** retries)
@@ -71,7 +76,12 @@ class TwttrAPIClient:
                             raise Error(d.get("error"))
                         return d
                     except aiohttp.ClientResponseError as e:
-                        raise Error(f"HTTP Error: {e}", response.status)
+                        if "Too Many Requests" in str(e):
+                            add_message(f"Too Many Requests. Слишком много запросов или закончился тариф.", self.account.screen_name, self.account.color, "error")
+                            await asyncio.sleep(self.retry_backoff ** retries)
+                            retries += 1
+                        else:
+                            raise Error(f"HTTP Error: {e}")
                     except (aiohttp.ClientConnectorError, asyncio.TimeoutError) as e:
                         add_message(f"Connection error: {e}. Retrying in {self.retry_backoff ** retries} seconds...", self.account.screen_name, self.account.color, "warning")
                         await asyncio.sleep(self.retry_backoff ** retries)
