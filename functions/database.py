@@ -86,7 +86,6 @@ async def add_faker(account: Account, user_id: int, worker_name: str = None):
             await db.commit()
             return True
     except Exception as e:
-        print(f"Ошибка при добавлении пользователя: {e}")
         return False
 
 async def is_user_in_fakers(account: Account, user_id: int, worker_name: str = None) -> bool:
@@ -101,7 +100,6 @@ async def is_user_in_fakers(account: Account, user_id: int, worker_name: str = N
                 result = await cursor.fetchone()
                 return result is not None
     except Exception as e:
-        print(f"Ошибка при проверке пользователя: {e}")
         return False
 
 

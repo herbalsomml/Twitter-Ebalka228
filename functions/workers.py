@@ -248,11 +248,6 @@ async def cooldown(twttr_client: TwttrAPIClient, account: Account, worker_name:s
         account.soft_detected = False
 
 
-async def check_banned_status(account:Account):
-    if account.is_banned:
-        raise AccountBanned("Забанен")
-
-
 async def if_user_retweeted(twttr_client: TwttrAPIClient, account: Account, user_id: int, tweet_id: int, WORKER_NAME:str=None):
     cursor = ""
 

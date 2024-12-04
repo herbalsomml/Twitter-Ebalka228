@@ -36,7 +36,6 @@ async def dm_worker(twttr_client: TwttrAPIClient, utools_client: uToolsAPIClient
         if len(conversations) < 1:
             no_msg += 1
 
-        print(f"{account.screen_name} - {no_msg}")
         if no_msg >= account.settings.skip_after_empty_pages:
             return True
 
@@ -64,13 +63,14 @@ async def dm_worker(twttr_client: TwttrAPIClient, utools_client: uToolsAPIClient
                 continue
 
             if model_tweet_id and account.settings.check_retweets and not await if_user_retweeted(twttr_client, account, user_id, model_tweet_id, WORKER_NAME):
-                    if await is_user_in_fakers(account, user_id, WORKER_NAME):
-                        await new_action(account=account, message=f"{random.choice(account.settings.faker_block_text)}", user_id=user_id, rt_id=None, unrt_id=None, ban_id=user_id)
-                        continue
-                    
-                    await new_action(account=account, message=f"{random.choice(account.settings.warning_text)}", user_id=user_id, rt_id=None, unrt_id=None, ban_id=None)
-                    await add_faker(account, user_id, WORKER_NAME)
+                if await is_user_in_fakers(account, user_id, WORKER_NAME):
+                    await new_action(account=account, message=f"{random.choice(account.settings.faker_block_text)}", user_id=user_id, rt_id=None, unrt_id=None, ban_id=user_id)
                     continue
+                    
+                print("скип")
+                await new_action(account=account, message=f"{random.choice(account.settings.warning_text)}", user_id=user_id, rt_id=None, unrt_id=None, ban_id=None)
+                await add_faker(account, user_id, WORKER_NAME)
+                continue
 
             if user_tweet_id:
                 await wait_delay(min_sec=account.settings.min_small_actions_delay, max_sec=account.settings.max_small_actions_delay, worker_name=WORKER_NAME)
@@ -231,31 +231,38 @@ async def main_worker(account):
     async def run_worker(worker_name, worker_func):
         task = asyncio.create_task(worker_func())
         tasks.append(task)
-        try:
-            await task
-        except AccountBanned as e:
-            stop_worker.set()
-            add_message(
-                f"✋ Воркер {worker_name} Остановлен",
+        
+        while True:
+            try:
+                task = asyncio.create_task(worker_func())
+                tasks.append(task)
+                await task
+                await asyncio.sleep(30)
+            except AccountBanned as e:
+                stop_worker.set()
+                add_message(
+                    f"✋ Воркер {worker_name} Остановлен",
+                    account.screen_name,
+                    account.color,
+                    "error",
+                )
+                send_telegram_message(
+                    f"✋ Воркер {worker_name} Остановлен",
+                    account.screen_name,
+                )
+            except Exception as e:
+                add_message(
+                    f"❌ {worker_name} завершился с ошибкой: {e}",
+                    account.screen_name,
+                    account.color,
+                    "error",
+                )
+                send_telegram_message(
+                    f"❌ {worker_name} завершился с ошибкой: {e}",
                 account.screen_name,
-                account.color,
-                "error",
-            )
-            send_telegram_message(
-                f"✋ Воркер {worker_name} Остановлен",
-                account.screen_name,
-            )
-        except Exception as e:
-            add_message(
-                f"❌ {worker_name} завершился с ошибкой: {e}",
-                account.screen_name,
-                account.color,
-                "error",
-            )
-            send_telegram_message(
-                f"❌ {worker_name} завершился с ошибкой: {e}",
-               account.screen_name,
-            )
+                )
+
+                await asyncio.sleep(15)
 
     async def stop_all_tasks():
         for task in tasks:
@@ -294,7 +301,6 @@ async def main_worker(account):
             run_actions_maker_worker(),
         )
     except AccountBanned:
-        print("Завершая")
         await twttr_client.close()
         await utools_client.close()
         await stop_all_tasks()

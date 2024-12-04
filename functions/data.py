@@ -247,7 +247,6 @@ async def get_dm_init_data_from_response(twttr_client:TwttrAPIClient, account:Ac
         return False, None, None, None
     
     data = r.get('data')
-    pprint(data)
     inbox_initial_state = data.get('inbox_initial_state') if data else None
     conversations_obj = inbox_initial_state.get('conversations')
     messages_obj = inbox_initial_state.get('entries')

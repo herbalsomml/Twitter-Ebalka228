@@ -45,8 +45,6 @@ async def send_dm(twttr_client: TwttrAPIClient, account: Account, message:str, u
 async def get_model_info(twttr_client: TwttrAPIClient, account: Account, worker_name:str=None):
     add_message(f"Получаю информацию об аккаунте модели...", account.screen_name, account.color, "log", worker_name)
     try:
-        print(len(account.screen_name))
-        print(account.screen_name)
         r = await twttr_client.get_user(account.screen_name)
         status, id, name, screen_name, followers_count, pinned_tweet_id = await get_model_info_from_response(r)
         if not status:
