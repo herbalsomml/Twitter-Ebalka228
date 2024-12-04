@@ -247,14 +247,15 @@ async def get_dm_init_data_from_response(twttr_client:TwttrAPIClient, account:Ac
         return False, None, None, None
     
     data = r.get('data')
+    pprint(data)
     inbox_initial_state = data.get('inbox_initial_state') if data else None
     conversations_obj = inbox_initial_state.get('conversations')
     messages_obj = inbox_initial_state.get('entries')
     users_obj = inbox_initial_state.get('users')
 
-    conversations = await convert_conversations(conversations_obj)
-    messages = await convert_messages(messages_obj)
-    users = await convert_users(twttr_client, account, users_obj)
+    conversations = await convert_conversations(conversations_obj) if conversations_obj else []
+    messages = await convert_messages(messages_obj) if messages_obj else []
+    users = await convert_users(twttr_client, account, users_obj) if users_obj else []
 
     return True, messages, conversations, users
 

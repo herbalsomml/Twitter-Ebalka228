@@ -106,6 +106,8 @@ async def init_dm(utools_client:uToolsAPIClient, twttr_client:TwttrAPIClient, ac
 
 async def get_dms(utools_client:uToolsAPIClient, twttr_client:TwttrAPIClient, account:Account, max_id:int=None, worker_name:str=None):
     try:
+        if not max_id:
+            return None, [], [], []
         add_message(f"Получаю список диалогов...", account.screen_name, account.color, "log", worker_name)
         r = await utools_client.get_dms_list(max_id)
         

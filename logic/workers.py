@@ -65,11 +65,11 @@ async def dm_worker(twttr_client: TwttrAPIClient, utools_client: uToolsAPIClient
 
             if model_tweet_id and account.settings.check_retweets and not await if_user_retweeted(twttr_client, account, user_id, model_tweet_id, WORKER_NAME):
                     if await is_user_in_fakers(account, user_id, WORKER_NAME):
-                    #    await new_action(account=account, message=f"{random.choice(account.settings.faker_block_text)}", user_id=user_id, rt_id=None, unrt_id=None, ban_id=user_id)
+                        await new_action(account=account, message=f"{random.choice(account.settings.faker_block_text)}", user_id=user_id, rt_id=None, unrt_id=None, ban_id=user_id)
                         continue
                     
-                #    await new_action(account=account, message=f"{random.choice(account.settings.warning_text)}", user_id=user_id, rt_id=None, unrt_id=None, ban_id=None)
-                 #   await add_faker(account, user_id, WORKER_NAME)
+                    await new_action(account=account, message=f"{random.choice(account.settings.warning_text)}", user_id=user_id, rt_id=None, unrt_id=None, ban_id=None)
+                    await add_faker(account, user_id, WORKER_NAME)
                     continue
 
             if user_tweet_id:
