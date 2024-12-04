@@ -6,22 +6,30 @@ from functions.basic import add_message
 from logic.classes import Account
 
 
-async def create_database_and_table(account: Account, worker_name:str=None):
+async def create_database_and_table(account: Account, worker_name: str = None):
     add_message(f"Создаю БД...", account.screen_name, account.color, "log", worker_name)
     try: 
         async with aiosqlite.connect(f"databases/{account.id}.db") as db:
-            create_table_query = f"""
+            create_table_query = """
             CREATE TABLE IF NOT EXISTS interactions (
-                user_id INTEGER CHECK(user_id > 0) UNIQUE, -- Положительное число
-                interaction_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Время взаимодействия
+                user_id INTEGER CHECK(user_id > 0) UNIQUE, 
+                interaction_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             """
             await db.execute(create_table_query)
             await db.commit()
 
-            create_table_query = f"""
+            create_table_query = """
             CREATE TABLE IF NOT EXISTS tweet_interactions (
                 tweet_id INTEGER CHECK(tweet_id > 0) UNIQUE
+            );
+            """
+            await db.execute(create_table_query)
+            await db.commit()
+
+            create_table_query = """
+            CREATE TABLE IF NOT EXISTS fakers (
+                user_id INTEGER CHECK(user_id > 0) UNIQUE
             );
             """
             await db.execute(create_table_query)
@@ -30,7 +38,7 @@ async def create_database_and_table(account: Account, worker_name:str=None):
             return True
 
     except Exception as e:
-        add_message(f"Ошибка при создании БД: {e}", account.screen_name, account.color, "success", worker_name)
+        add_message(f"Ошибка при создании БД: {e}", account.screen_name, account.color, "error", worker_name)
         return False
 
 
@@ -64,6 +72,36 @@ async def add_or_update_user(account: Account, user_id: int, worker_name: str = 
             await db.commit()
             return True
     except Exception as e:
+        return False
+    
+
+async def add_faker(account: Account, user_id: int, worker_name: str = None):
+    try:
+        async with aiosqlite.connect(f"databases/{account.id}.db") as db:
+            query = """
+            INSERT INTO fakers (user_id)
+            VALUES (?)
+            """
+            await db.execute(query, (user_id,))
+            await db.commit()
+            return True
+    except Exception as e:
+        print(f"Ошибка при добавлении пользователя: {e}")
+        return False
+
+async def is_user_in_fakers(account: Account, user_id: int, worker_name: str = None) -> bool:
+    try:
+        async with aiosqlite.connect(f"databases/{account.id}.db") as db:
+            query = """
+            SELECT 1 
+            FROM fakers 
+            WHERE user_id = ?;
+            """
+            async with db.execute(query, (user_id,)) as cursor:
+                result = await cursor.fetchone()
+                return result is not None
+    except Exception as e:
+        print(f"Ошибка при проверке пользователя: {e}")
         return False
 
 

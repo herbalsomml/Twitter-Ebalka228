@@ -50,9 +50,10 @@ class uToolsAPIClient:
                     response.raise_for_status()
                     d = await response.json()
                     code = d.get("code")
+                    msg = d.get("msg")
 
                     if code == 0:
-                        raise Error(d.get("msg"))
+                        raise Error(msg)
                     return d
 
             except aiohttp.ClientResponseError as e:

@@ -386,18 +386,21 @@ async def get_sorted_messages(messages):
 
 
 async def check_last_message_time(conversation_id, messages, minutes_before_next_interaction_with_exist):
-    for message in messages:
-        if message.conversation_id != conversation_id:
-            continue
-
-        timestamp = datetime.fromtimestamp(message.time / 1000, tz=timezone.utc)
-        now = datetime.now(tz=timezone.utc)
-        time_difference = now - timedelta(minutes=minutes_before_next_interaction_with_exist)
-
-        if timestamp >= time_difference:
-            return False
-        else:
-            return True
+    conversation_messages = [msg for msg in messages if msg.conversation_id == conversation_id]
+    
+    if not conversation_messages:
+        return True
+    
+    last_message = max(conversation_messages, key=lambda msg: msg.time)
+    
+    last_message_timestamp = datetime.fromtimestamp(last_message.time / 1000, tz=timezone.utc)
+    
+    now = datetime.now(tz=timezone.utc)
+    
+    time_since_last_message = now - last_message_timestamp
+    minutes_passed = time_since_last_message.total_seconds() / 60
+    
+    return minutes_passed > minutes_before_next_interaction_with_exist
 
 
 async def check_conversation(account:Account, conversation, messages, worker_name:str=None):
@@ -430,6 +433,8 @@ async def get_sorted_conversations(account:Account, messages, conversations, wor
     for msg in messages:
         for conversation in conversations:
             if not await check_conversation(account, conversation, messages, worker_name):
+                continue
+            if not await check_last_message_time(conversation.id, messages, account.settings.minutes_before_next_interaction_with_exist):
                 continue
             if msg.conversation_id == conversation.id and conversation not in sorted_conversations:
                 sorted_conversations.append(conversation)

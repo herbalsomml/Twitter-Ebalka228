@@ -13,9 +13,10 @@ from logic.classes import Account, Tweet, User
 from logic.constants import MANAGER_MESSAGE
 from logic.exceptions import AccountBanned
 
-from .api import ban, init_dm, retweet, send_dm, unretweet
+from .api import ban, init_dm, retweet, send_dm, unretweet, tweet_info
 from .basic import wait_delay
 from .database import block_user, is_user_in_blacklist
+from .api import get_reposted_timeline
 
 
 async def initialize(twttr_client: TwttrAPIClient, utools_client: uToolsAPIClient, account: Account, worker_name:str=None):
@@ -149,8 +150,8 @@ async def check_tweet(account:Account, tweet:Tweet):
 
 
 async def add_tweet_to_line(account: Account, tweet:Tweet, worker_name:str=None) -> None:
-    if await is_tweet_did(account, tweet.id):
-        return
+#    if await is_tweet_did(account, tweet.id):
+ #       return
 
     if tweet.views < account.settings.min_tweet_views_to_work:
         return
@@ -217,11 +218,29 @@ async def do_action(twttr_client:TwttrAPIClient, account:Account, action):
     return True
 
 
-async def cooldown(account: Account, worker_name:str=None):
+async def cooldown(twttr_client: TwttrAPIClient, account: Account, worker_name:str=None):
     if account.is_cooldown:
+        if not account.self_rts and account.settings.do_self_rts:
+            add_message(f"Делаю селф-рт перед кулдауном", account.screen_name, account.color, "warning", worker_name)
+            account.self_rts = True
+            i = 0
+            for id in account.settings.post_ids_for_cooldown_rt:
+                if i == account.settings.max_self_rts_amount:
+                    break
+                await wait_delay(min_sec=account.settings.min_actions_delay, max_sec=account.settings.max_actions_delay)
+                tweet = await tweet_info(twttr_client, account, id)
+                if tweet.retweeted:
+                    await unretweet(twttr_client, account, id)
+                    await wait_delay(min_sec=account.settings.min_small_actions_delay, max_sec=account.settings.max_small_actions_delay)
+                await retweet(twttr_client, account, id)
+                i += 1
+                add_message(f"{i}/{len(account.settings.post_ids_for_cooldown_rt) if len(account.settings.post_ids_for_cooldown_rt) < account.settings.max_self_rts_amount else account.settings.max_self_rts_amount} селф-рт сделано", account.screen_name, account.color, "warning", worker_name)
+
         add_message(f"Кулдаун {account.settings.cooldown_seconds}с.", account.screen_name, account.color, "warning", worker_name)
+
         await wait_delay(sec=account.settings.cooldown_seconds)
         account.is_cooldown = False
+        account.self_rts = False
 
     if account.soft_detected:
         await add_message(f"Автоматику спалили! Ожидание {account.settings.if_detected_cooldown_seconds}с.", account.screen_name, account.color, "warning", worker_name)
@@ -232,3 +251,21 @@ async def cooldown(account: Account, worker_name:str=None):
 async def check_banned_status(account:Account):
     if account.is_banned:
         raise AccountBanned("Забанен")
+
+
+async def if_user_retweeted(twttr_client: TwttrAPIClient, account: Account, user_id: int, tweet_id: int, WORKER_NAME:str=None):
+    cursor = ""
+
+    amount = 0
+
+    while True:
+        cursor, users = await get_reposted_timeline(twttr_client, account, tweet_id, cursor, WORKER_NAME)
+        amount += len(users)
+        for user in users:
+            if user.id == user_id:
+                return True
+            
+        if not cursor:
+            return False
+        
+        await wait_delay(sec=1)

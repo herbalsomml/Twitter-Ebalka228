@@ -2,10 +2,11 @@ import asyncio
 
 import aiohttp
 
-from functions.basic import add_message
+from functions.basic import add_message, send_telegram_message
 from logic.classes import Account
 from logic.exceptions import Error
 from settings import reconnect_retries, retry_backoff, twttr_api_key
+from logic.exceptions import AccountBanned
 
 
 class TwttrAPIClient:
@@ -53,14 +54,14 @@ class TwttrAPIClient:
                             raise Error(d.get("error"))
                         return d
                     except aiohttp.ClientResponseError as e:
-                        if "Forbidden" in str(e):
-                            add_message(f"Forbidden. Проверьте auth_token или API", self.account.screen_name, self.account.color, "error")
+                        if "Too Many Requests" in str(e):
+                            add_message(f"Too Many Requests. Слишком много запросов или закончился тариф.", self.account.name, self.account.color, "error")
                             await asyncio.sleep(self.retry_backoff ** retries)
                             retries += 1
                         else:
                             raise Error(f"HTTP Error: {e}")
                     except (aiohttp.ClientConnectorError, asyncio.TimeoutError) as e:
-                        add_message(f"Connection error: {e}. Retrying in {self.retry_backoff ** retries} seconds...", self.account.screen_name, self.account.color, "warning")
+                        add_message(f"Connection error: {e}. Retrying in {self.retry_backoff ** retries} seconds...", self.account.name, self.account.color, "warning")
                         await asyncio.sleep(self.retry_backoff ** retries)
                         retries += 1
             elif method == "POST":
@@ -77,13 +78,13 @@ class TwttrAPIClient:
                         return d
                     except aiohttp.ClientResponseError as e:
                         if "Too Many Requests" in str(e):
-                            add_message(f"Too Many Requests. Слишком много запросов или закончился тариф.", self.account.screen_name, self.account.color, "error")
+                            add_message(f"Too Many Requests. Слишком много запросов или закончился тариф.", self.account.name, self.account.color, "error")
                             await asyncio.sleep(self.retry_backoff ** retries)
                             retries += 1
                         else:
                             raise Error(f"HTTP Error: {e}")
                     except (aiohttp.ClientConnectorError, asyncio.TimeoutError) as e:
-                        add_message(f"Connection error: {e}. Retrying in {self.retry_backoff ** retries} seconds...", self.account.screen_name, self.account.color, "warning")
+                        add_message(f"Connection error: {e}. Retrying in {self.retry_backoff ** retries} seconds...", self.account.name, self.account.color, "warning")
                         await asyncio.sleep(self.retry_backoff ** retries)
                         retries += 1
         raise Error(f"Max retries exceeded for endpoint {endpoint}")
