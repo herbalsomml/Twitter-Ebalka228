@@ -21,6 +21,7 @@ class Settings:
                  min_tweet_views_to_work:int=0,
                  new_user_only_after_exist:bool=False,
                  do_self_rts:bool=False,
+                 max_followers_to_work:int=400000,
 
                  banned_words_in_tweet:list=BANNED_WORDS,
                  skip_lang:list=[],
@@ -82,6 +83,7 @@ class Settings:
         self.skip_lang = skip_lang
         self.ignor_user_ids = ignor_user_ids
         self.max_self_rts_amount = max_self_rts_amount
+        self.max_followers_to_work = max_followers_to_work
         
 
         ### Функции

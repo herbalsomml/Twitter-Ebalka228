@@ -59,7 +59,7 @@ async def dm_worker(twttr_client: TwttrAPIClient, utools_client: uToolsAPIClient
                     await new_action(account=account, message=None, user_id=None, rt_id=None, unrt_id=None, ban_id=user_id)
                 continue
 
-            if not await check_user(user, account):
+            if not await check_user(user, account, dm=True):
                 continue
 
             if model_tweet_id and account.settings.check_retweets and not await if_user_retweeted(twttr_client, account, user_id, model_tweet_id, WORKER_NAME):
@@ -275,14 +275,11 @@ async def main_worker(account):
 
     async def run_dm_worker():
         WORKER_NAME = "DM"
-        async def worker_func():
+        if account.settings.enable_dm_worker:
             status, id_for_pagination = await init_dm(utools_client, twttr_client, account)
             if not status:
                 raise Exception("Ошибка инициализации DM")
-            return await dm_worker(twttr_client, utools_client, account, id_for_pagination, WORKER_NAME)
-
-        if account.settings.enable_dm_worker:
-            await run_worker(WORKER_NAME, worker_func)
+            await run_worker(WORKER_NAME, lambda: dm_worker(twttr_client, utools_client, account, id_for_pagination, WORKER_NAME))
 
     async def run_new_users_worker():
         WORKER_NAME = "NU"

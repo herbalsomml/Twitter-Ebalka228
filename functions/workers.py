@@ -60,7 +60,7 @@ async def initialize_dm(utools_client:uToolsAPIClient, twttr_client:TwttrAPIClie
 
     return True, maximal_entry, messages, conversations, users
 
-async def check_user(user:User, account:Account):
+async def check_user(user:User, account:Account, dm=False):
     if user.id == account.id:
         return False
 
@@ -68,6 +68,9 @@ async def check_user(user:User, account:Account):
         return False
     
     if user.followers_count < account.settings.followers_to_work:
+        return False
+    
+    if user.followers_count > account.settings.max_followers_to_work and not dm:
         return False
     
     if not user.is_blue_verified and not account.settings.work_with_not_blue_verified:
