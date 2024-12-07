@@ -245,9 +245,9 @@ async def main_worker(account):
     try:
         await asyncio.gather(
             run_dm_worker(),
-           # run_new_users_worker(),
-           # run_cooldown_controller(),
-           # run_actions_maker_worker(),
+            run_new_users_worker(),
+            run_cooldown_controller(),
+            run_actions_maker_worker(),
         )
     except AccountBanned:
         await twttr_client.close()
