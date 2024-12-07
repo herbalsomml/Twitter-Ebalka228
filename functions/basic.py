@@ -4,6 +4,7 @@ import random
 import requests
 from colorama import Fore, Style
 from rich.console import Console
+from settings import debug
 
 from settings import telegram_bot_api_key, telegram_ids
 
@@ -66,6 +67,13 @@ def add_message(msg:str, info:str="...", color:str="#FFFFFF", type:str="success"
 
     print(Fore.LIGHTBLACK_EX + "------------" + Style.RESET_ALL)
     print(Fore.LIGHTBLACK_EX + f"{info_colored}{info} | {Fore.WHITE + worker + ' | ' if worker else ''}" + msg_color + msg + Style.RESET_ALL)
+
+
+def add_debug(msg:str, info:str="...", color:str="#FFFFFF", worker:str=None, dbg:bool=False):
+    if debug and dbg:
+        info_colored = hex_to_rgb(color)
+        print(Fore.LIGHTBLACK_EX + "------------" + Style.RESET_ALL)
+        print(Fore.LIGHTBLACK_EX + f"{info_colored}{info} | {Fore.WHITE + worker + ' | ' if worker else ''}" + Fore.WHITE + msg + Style.RESET_ALL)
 
 
 async def stop_tasks(tasks: list):

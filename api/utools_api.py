@@ -2,7 +2,7 @@ import asyncio
 
 import aiohttp
 
-from functions.basic import add_message
+from functions.basic import add_message, add_debug
 from logic.classes import Account
 from logic.exceptions import Error
 from settings import utools_api_key
@@ -44,17 +44,22 @@ class uToolsAPIClient:
         retries = 0
         while retries < self.max_retries:
             try:
-                async with self.session.request(
-                    method, url, headers=headers, params=params, data=data, timeout=10
-                ) as response:
-                    response.raise_for_status()
-                    d = await response.json()
-                    code = d.get("code")
-                    msg = d.get("msg")
+                while True:
+                    async with self.session.request(
+                        method, url, headers=headers, params=params, data=data, timeout=10
+                    ) as response:
+                        response.raise_for_status()
+                        d = await response.json()
+                        code = d.get("code")
+                        msg = d.get("msg")
 
-                    if code == 0:
-                        raise Error(msg)
-                    return d
+                        if code == 0:
+                            if "If your parameters contain auth_token, please check whether the account status is normal." in msg:
+                                add_debug("Глюк utools, новая попытка")
+                                asyncio.sleep(5)
+                                continue
+                            raise Error(msg)
+                        return d
 
             except aiohttp.ClientResponseError as e:
                 raise Error(f"HTTP Error: {e}")

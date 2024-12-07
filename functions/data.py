@@ -439,6 +439,14 @@ async def get_sorted_conversations(account:Account, messages, conversations, wor
     
     return sorted_conversations
 
+async def get_inbox_conversations(conversations: list):
+    sorted = []
+    for conversation in conversations:
+        if not conversation.trusted:
+            sorted.append(conversation)
+
+    return sorted
+
 
 async def get_reposted_timeline_data_from_response(twttr_client:TwttrAPIClient, account:Account, r, worker_name:str=None):
     if len(r) < 1:

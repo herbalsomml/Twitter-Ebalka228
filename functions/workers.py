@@ -4,7 +4,7 @@ import random
 from api.twttr_api import TwttrAPIClient
 from api.utools_api import uToolsAPIClient
 from functions.api import get_ct0_by_auth_token, get_model_info, tweet_info
-from functions.basic import add_message
+from functions.basic import add_message, add_debug
 from functions.data import check_if_model, get_interlocutor_id, get_user_from_user_list, get_conversation_last_links
 from functions.database import (create_database_and_table, has_enough_time_passed,
                                 create_shared_database, is_user_in_fakers, add_faker, is_tweet_did)
@@ -60,26 +60,33 @@ async def initialize_dm(utools_client:uToolsAPIClient, twttr_client:TwttrAPIClie
 
     return True, maximal_entry, messages, conversations, users
 
-async def check_user(user:User, account:Account, dm=False):
+async def check_user(user:User, account:Account, dm=False, dbg:bool=False):
     if user.id == account.id:
+        add_debug("Это я", account.screen_name, account.color, dbg=dbg)
         return False
 
     if not user:
+        add_debug("Нет пользователя", account.screen_name, account.color, dbg=dbg)
         return False
     
     if user.followers_count < account.settings.followers_to_work:
+        add_debug(f"Мало подписоты (@{user.screen_name}): {user.followers_count}/{account.settings.followers_to_work}", account.screen_name, account.color, dbg=dbg)
         return False
     
     if user.followers_count > account.settings.max_followers_to_work and not dm:
+        add_debug("Слишком много подписоты", account.screen_name, account.color, dbg=dbg)
         return False
     
     if not user.is_blue_verified and not account.settings.work_with_not_blue_verified:
+        add_debug("Галочки нет", account.screen_name, account.color, dbg=dbg)
         return False
     
     if not account.settings.work_if_not_sure_that_its_model and not await check_if_model(user.description, user.urls):
+        add_debug("Не модель", account.screen_name, account.color, dbg=dbg)
         return False 
     
     if not user.can_dm:
+        add_debug("Нельзя писать", account.screen_name, account.color, dbg=dbg)
         return False
     
     return True
@@ -272,7 +279,8 @@ async def if_user_retweeted(twttr_client: TwttrAPIClient, account: Account, user
         await wait_delay(sec=1)
 
 
-async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, conversations:list, messages:list, users:list, empty_pages:int, link:str=None, worker_name:str=None):
+async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, conversations:list, messages:list, users:list, empty_pages:int, link:str=None, worker_name:str=None, inbox:bool=False):
+    print(f"Процессинг {len(conversations)}")
     for conversation in conversations:
         await cooldown(twttr_client, account, worker_name)
 
@@ -298,7 +306,7 @@ async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, c
         if not await check_user(user, account, dm=True):
             continue
 
-        if model_tweet_id and account.settings.check_retweets and not await if_user_retweeted(twttr_client, account, user_id, model_tweet_id, worker_name):
+        if model_tweet_id and account.settings.check_retweets and not await if_user_retweeted(twttr_client, account, user_id, model_tweet_id, worker_name) and not inbox:
             if await is_user_in_fakers(account, user_id, worker_name):
                 await new_action(account=account, message=f"{random.choice(account.settings.faker_block_text)}", user_id=user_id, rt_id=None, unrt_id=None, ban_id=user_id)
                 continue
@@ -318,17 +326,17 @@ async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, c
             
         empty_pages = 0
 
-        if not tweet:
+        if not tweet and not inbox:
             user.pinned_tweet = await get_pinned_tweet(twttr_client, account, user)
             tweet = user.pinned_tweet
             message = await get_message_text(link, account, did_pinned=True)
 
-        if not tweet:
+        if not tweet and not inbox:
             message = await get_message_text(link, account, no_tweet=True)
             await new_action(account=account, message=message, user_id=user_id, rt_id=None, unrt_id=None, ban_id=None)
             continue
 
-        if account.settings.enable_nu_worker:
+        if account.settings.enable_nu_worker and tweet:
             await add_tweet_to_line(account, tweet, worker_name)
 
         if tweet and not await check_tweet(account, tweet):
@@ -336,7 +344,11 @@ async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, c
                 await new_action(account=account, message=None, user_id=None, rt_id=None,unrt_id=None, ban_id=user_id,)
             continue
 
-        message = await get_message_text(link, account)
-        await new_action(account=account, message=message, user_id=user_id, rt_id=tweet.id, unrt_id=tweet.id if tweet.retweeted else None, ban_id=None)
+        if not inbox:
+            message = await get_message_text(link, account)
+            await new_action(account=account, message=message, user_id=user_id, rt_id=tweet.id, unrt_id=tweet.id if tweet.retweeted else None, ban_id=None)
+        else:
+            message = await get_message_text(link, account, inbox=True)
+            await new_action(account=account, message=message, user_id=user_id, rt_id=None, unrt_id=None, ban_id=None)
     
     return empty_pages

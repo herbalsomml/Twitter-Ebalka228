@@ -11,7 +11,7 @@ from .data import (check_if_messages_in_conversation_from_response,
                    get_model_info_from_response,
                    get_reposted_timeline_data_from_response,
                    get_sorted_conversations, get_sorted_messages,
-                   get_tweet_data_from_response)
+                   get_tweet_data_from_response, get_inbox_conversations)
 from .database import add_or_update_user
 
 
@@ -94,6 +94,7 @@ async def init_dm(utools_client:uToolsAPIClient, twttr_client:TwttrAPIClient, ac
             add_message("Не удалось проинициализировать DM", account.screen_name, account.color, "error", worker_name)
             return False, None, [], [], []
         maximal_entry = await get_maximal_entry_id(conversations)
+        conversations = await get_inbox_conversations(conversations)
         return True, maximal_entry, messages, conversations, users
     except Exception as e:
         add_message(f"Ошибка при инициализации DM: {e}", account.screen_name, account.color, "error", worker_name)

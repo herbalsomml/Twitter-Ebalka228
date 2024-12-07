@@ -30,7 +30,7 @@ async def dm_worker(twttr_client: TwttrAPIClient, utools_client: uToolsAPIClient
     if len(account.settings.links) < 1:
         link = await get_link_to_promote(twttr_client, account, WORKER_NAME)
 
-    s = await procces_conversations(twttr_client, account, conversations, messages, users, 0, link, WORKER_NAME)
+    s = await procces_conversations(twttr_client, account, conversations, messages, users, 0, link, WORKER_NAME, inbox=True)
 
     if s == -1:
         return False

@@ -7,6 +7,7 @@ twttr_api_key = "api_key twttr api"
 utools_api_key = "api_key utools api"
 reconnect_retries = 15
 retry_backoff = 2
+debug = False
 
 telegram_ids = [
     1435333610
