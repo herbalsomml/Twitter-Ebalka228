@@ -272,7 +272,7 @@ async def if_user_retweeted(twttr_client: TwttrAPIClient, account: Account, user
         await wait_delay(sec=1)
 
 
-async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, conversations:list, messages:list, users:list, empty_pages:int, link:str=None, worker_name:str=None, inbox:bool=False):
+async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, conversations:list, messages:list, users:list, empty_pages:int, link:str=None, worker_name:str=None):
     for conversation in conversations:
         await cooldown(twttr_client, account, worker_name)
 
@@ -287,7 +287,7 @@ async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, c
         model_tweet_id, user_tweet_id = await get_conversation_last_links(conversation.id, account.id, messages)
         tweet = None
 
-        if not await has_enough_time_passed(account, user_id, account.settings.minutes_before_next_interaction_with_exist, worker_name) and not inbox:
+        if not await has_enough_time_passed(account, user_id, account.settings.minutes_before_next_interaction_with_exist, worker_name):
             continue
 
         if not await check_user_for_critical(user, account):
@@ -298,7 +298,7 @@ async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, c
         if not await check_user(user, account, dm=True):
             continue
 
-        if model_tweet_id and account.settings.check_retweets and not await if_user_retweeted(twttr_client, account, user_id, model_tweet_id, worker_name) and not inbox:
+        if model_tweet_id and account.settings.check_retweets and not await if_user_retweeted(twttr_client, account, user_id, model_tweet_id, worker_name):
             if await is_user_in_fakers(account, user_id, worker_name):
                 await new_action(account=account, message=f"{random.choice(account.settings.faker_block_text)}", user_id=user_id, rt_id=None, unrt_id=None, ban_id=user_id)
                 continue
@@ -323,7 +323,7 @@ async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, c
             tweet = user.pinned_tweet
             message = await get_message_text(link, account, did_pinned=True)
 
-        if not tweet and not inbox:
+        if not tweet:
             message = await get_message_text(link, account, no_tweet=True)
             await new_action(account=account, message=message, user_id=user_id, rt_id=None, unrt_id=None, ban_id=None)
             continue
@@ -336,11 +336,7 @@ async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, c
                 await new_action(account=account, message=None, user_id=None, rt_id=None,unrt_id=None, ban_id=user_id,)
             continue
 
-        if not inbox:
-            message = await get_message_text(link, account)
-            await new_action(account=account, message=message, user_id=user_id, rt_id=tweet.id, unrt_id=tweet.id if tweet.retweeted else None, ban_id=None)
-        else:
-            message = await get_message_text(link, account, inbox)
-            await new_action(account=account, message=message, user_id=user_id, rt_id=None, unrt_id=None, ban_id=None)
+        message = await get_message_text(link, account)
+        await new_action(account=account, message=message, user_id=user_id, rt_id=tweet.id, unrt_id=tweet.id if tweet.retweeted else None, ban_id=None)
     
     return empty_pages
