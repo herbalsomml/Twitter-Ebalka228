@@ -226,12 +226,8 @@ async def main_worker(account):
 
     async def run_dm_worker():
         WORKER_NAME = "DM"
-     #   if account.settings.enable_dm_worker:
-            
-       #     status, id_for_pagination = await init_dm(utools_client, twttr_client, account)
-       #     if not status:
-        #        raise Exception("Ошибка инициализации DM")
-        await run_worker(WORKER_NAME, lambda: dm_worker(twttr_client, utools_client, account, WORKER_NAME))
+        if account.settings.enable_dm_worker:
+            await run_worker(WORKER_NAME, lambda: dm_worker(twttr_client, utools_client, account, WORKER_NAME))
 
     async def run_new_users_worker():
         WORKER_NAME = "NU"
