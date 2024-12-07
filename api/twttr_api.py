@@ -108,11 +108,12 @@ class TwttrAPIClient:
         }
         return await self._send_request("GET", endpoint, params=params)
     
-    async def send_dm(self, message, to_user_id="", to_user_name="", media_id=""):
+    async def send_dm(self, message, to_user_id="", conversation_id="", to_user_name="", media_id=""):
         endpoint = "send-dm"
         payload = {
             "message": message,
             "to_user_id": to_user_id,
+            "conversation_id": conversation_id,
             "to_user_name": to_user_name,
             "media_id": media_id
         }

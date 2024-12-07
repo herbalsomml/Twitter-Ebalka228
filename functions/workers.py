@@ -191,13 +191,13 @@ async def get_pinned_tweet(twttr_client:TwttrAPIClient, account:Account, user:Us
         user.pinned_tweet = await tweet_info(twttr_client, account, user.pinned_tweet_id)
 
 
-async def new_action(account:Account, message:str=None, user_id:int=None, unrt_id:int=None, rt_id:int=None, ban_id:int=None, nu=False):
+async def new_action(account:Account, message:str=None, user_id:int=None, conversation_id:str=None, unrt_id:int=None, rt_id:int=None, ban_id:int=None, nu=False):
     while True:
         if nu and len(account.nu_actions) < 15:
-            account.nu_actions.append((message, user_id, unrt_id, rt_id, ban_id))
+            account.nu_actions.append((message, user_id, conversation_id, unrt_id, rt_id, ban_id))
             break
         elif not nu and  len(account.dm_actions) < 15:
-            account.dm_actions.append((message, user_id, unrt_id, rt_id, ban_id))
+            account.dm_actions.append((message, user_id, conversation_id, unrt_id, rt_id, ban_id))
             break
         else:
             await wait_delay(10)
@@ -208,7 +208,7 @@ async def do_action(twttr_client:TwttrAPIClient, account:Account, action):
         return False
 
     await wait_delay(min_sec=account.settings.min_actions_delay, max_sec=account.settings.max_actions_delay)
-    msg, user_id, unrt_id, rt_id, ban_id = action
+    msg, user_id, conversation_id, unrt_id, rt_id, ban_id = action
 
     if unrt_id:
         await wait_delay(min_sec=account.settings.min_small_actions_delay, max_sec=account.settings.max_small_actions_delay)
@@ -221,6 +221,10 @@ async def do_action(twttr_client:TwttrAPIClient, account:Account, action):
     if msg and user_id:
         await wait_delay(min_sec=account.settings.min_actions_delay, max_sec=account.settings.min_actions_delay)
         await send_dm(twttr_client, account, msg, user_id=user_id)
+
+    if msg and conversation_id:
+        await wait_delay(min_sec=account.settings.min_actions_delay, max_sec=account.settings.min_actions_delay)
+        await send_dm(twttr_client, account, msg, conversation_id=conversation_id)
 
     if ban_id:
         await wait_delay(min_sec=account.settings.min_actions_delay, max_sec=account.settings.max_actions_delay)
@@ -280,13 +284,19 @@ async def if_user_retweeted(twttr_client: TwttrAPIClient, account: Account, user
 
 
 async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, conversations:list, messages:list, users:list, empty_pages:int, link:str=None, worker_name:str=None, inbox:bool=False):
-    print(f"Процессинг {len(conversations)}")
     for conversation in conversations:
         await cooldown(twttr_client, account, worker_name)
+
+        if len(account.settings.links) >= 1:
+            link = await get_link_to_promote(twttr_client, account, worker_name)
+        if not link:
+            return -1
 
         if conversation.type == "GROUP_DM" and account.settings.skip_groups:
             continue
         elif conversation.type == "GROUP_DM" and not account.settings.skip_groups:
+            message = await get_message_text(link, account)
+            await new_action(account=account, message=message, user_id=None, conversation_id=conversation.id, rt_id=None, unrt_id=None, ban_id=None)
             continue
 
         user_id = await get_interlocutor_id(conversation, account.id)
@@ -300,7 +310,7 @@ async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, c
 
         if not await check_user_for_critical(user, account):
             if account.settings.ban_if_user_banned_you:
-                await new_action(account=account, message=None, user_id=None, rt_id=None, unrt_id=None, ban_id=user_id)
+                await new_action(account=account, message=None, user_id=None, conversation_id=None, rt_id=None, unrt_id=None, ban_id=user_id)
             continue
 
         if not await check_user(user, account, dm=True):
@@ -308,21 +318,16 @@ async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, c
 
         if model_tweet_id and account.settings.check_retweets and not await if_user_retweeted(twttr_client, account, user_id, model_tweet_id, worker_name) and not inbox:
             if await is_user_in_fakers(account, user_id, worker_name):
-                await new_action(account=account, message=f"{random.choice(account.settings.faker_block_text)}", user_id=user_id, rt_id=None, unrt_id=None, ban_id=user_id)
+                await new_action(account=account, message=f"{random.choice(account.settings.faker_block_text)}", user_id=user_id, conversation_id=None, rt_id=None, unrt_id=None, ban_id=user_id)
                 continue
                     
-            await new_action(account=account, message=f"{random.choice(account.settings.warning_text)}", user_id=user_id, rt_id=None, unrt_id=None, ban_id=None)
+            await new_action(account=account, message=f"{random.choice(account.settings.warning_text)}", user_id=user_id, conversation_id=None, rt_id=None, unrt_id=None, ban_id=None)
             await add_faker(account, user_id, worker_name)
             continue
 
         if user_tweet_id:
             await wait_delay(min_sec=account.settings.min_small_actions_delay, max_sec=account.settings.max_small_actions_delay, worker_name=worker_name)
             tweet = await tweet_info(twttr_client, account, user_tweet_id, worker_name)
-
-        if len(account.settings.links) >= 1:
-            link = await get_link_to_promote(twttr_client, account, worker_name)
-        if not link:
-            return -1
             
         empty_pages = 0
 
@@ -333,7 +338,7 @@ async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, c
 
         if not tweet and not inbox:
             message = await get_message_text(link, account, no_tweet=True)
-            await new_action(account=account, message=message, user_id=user_id, rt_id=None, unrt_id=None, ban_id=None)
+            await new_action(account=account, message=message, user_id=user_id, conversation_id=None, rt_id=None, unrt_id=None, ban_id=None)
             continue
 
         if account.settings.enable_nu_worker and tweet:
@@ -341,14 +346,14 @@ async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, c
 
         if tweet and not await check_tweet(account, tweet):
             if account.settings.ban_id_bad_post:
-                await new_action(account=account, message=None, user_id=None, rt_id=None,unrt_id=None, ban_id=user_id,)
+                await new_action(account=account, message=None, user_id=None, conversation_id=None, rt_id=None,unrt_id=None, ban_id=user_id,)
             continue
 
         if not inbox:
             message = await get_message_text(link, account)
-            await new_action(account=account, message=message, user_id=user_id, rt_id=tweet.id, unrt_id=tweet.id if tweet.retweeted else None, ban_id=None)
+            await new_action(account=account, message=message, user_id=user_id, conversation_id=None, rt_id=tweet.id, unrt_id=tweet.id if tweet.retweeted else None, ban_id=None)
         else:
             message = await get_message_text(link, account, inbox=True)
-            await new_action(account=account, message=message, user_id=user_id, rt_id=None, unrt_id=None, ban_id=None)
+            await new_action(account=account, message=message, user_id=user_id, conversation_id=None, rt_id=None, unrt_id=None, ban_id=None)
     
     return empty_pages

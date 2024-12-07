@@ -29,9 +29,9 @@ async def check_banned(e: Error, account: Account, worker_name:str=None):
         raise AccountBanned("Аккаунт заблокирован")
 
 
-async def send_dm(twttr_client: TwttrAPIClient, account: Account, message:str, user_id:int="", username:str="", media_id:int=""):
+async def send_dm(twttr_client: TwttrAPIClient, account: Account, message:str, user_id:int="", conversation_id:int="", username:str="", media_id:int=""):
     try:
-        r = await twttr_client.send_dm(message, to_user_id=user_id, to_user_name=username, media_id=media_id)
+        r = await twttr_client.send_dm(message, to_user_id=user_id, conversation_id=conversation_id, to_user_name=username, media_id=media_id)
         add_message(f"Сообщение отправлено!", account.screen_name, account.color, "success")
         await add_or_update_user(account, user_id)
         return True

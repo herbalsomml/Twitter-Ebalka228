@@ -111,7 +111,7 @@ async def new_users_worker(twttr_client: TwttrAPIClient, account: Account, WORKE
                     return False
 
                 message = await get_message_text(link, account, new=True)
-                await new_action(account=account, message=message, user_id=user.id, rt_id=None, unrt_id=None, ban_id=None, nu=True)
+                await new_action(account=account, message=message, user_id=user.id, conversation_id=None, rt_id=None, unrt_id=None, ban_id=None, nu=True)
                 await wait_delay(min_sec=account.settings.min_actions_delay, max_sec=account.settings.max_actions_delay)
 
             if not cursor:
