@@ -62,13 +62,14 @@ async def create_shared_database(account:Account, worker_name:str=None):
 async def add_or_update_user(account: Account, user_id: int, worker_name: str = None):
     try:
         async with aiosqlite.connect(f"databases/{account.id}.db") as db:
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             query = """
             INSERT INTO interactions (user_id, interaction_time)
-            VALUES (?, CURRENT_TIMESTAMP)
+            VALUES (?, ?)
             ON CONFLICT(user_id)
-            DO UPDATE SET interaction_time = CURRENT_TIMESTAMP;
+            DO UPDATE SET interaction_time = ?;
             """
-            await db.execute(query, (user_id,))
+            await db.execute(query, (user_id, current_time, current_time))
             await db.commit()
             return True
     except Exception as e:
@@ -117,14 +118,15 @@ async def has_enough_time_passed(account: Account, user_id: int, x_minutes: int,
                 if result is None:
                     return True
                 
-                last_interaction = datetime.strptime(result[0], "%Y-%m-%d %H:%M:%S")
+                try:
+                    last_interaction = datetime.strptime(result[0], "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    return False
+                
                 current_time = datetime.now()
                 time_difference = current_time - last_interaction
                 
-                if time_difference > timedelta(minutes=x_minutes):
-                    return True
-                else:
-                    return False
+                return time_difference > timedelta(minutes=x_minutes)
     except Exception as e:
         return False
 

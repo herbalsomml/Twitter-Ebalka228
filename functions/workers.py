@@ -5,7 +5,7 @@ from api.twttr_api import TwttrAPIClient
 from api.utools_api import uToolsAPIClient
 from functions.api import get_ct0_by_auth_token, get_model_info, tweet_info
 from functions.basic import add_message, add_debug
-from functions.data import check_if_model, get_interlocutor_id, get_user_from_user_list, get_conversation_last_links
+from functions.data import check_if_model, get_interlocutor_id, get_user_from_user_list, get_conversation_last_links, check_last_message_time
 from functions.database import (create_database_and_table, has_enough_time_passed,
                                 create_shared_database, is_user_in_fakers, add_faker, is_tweet_did)
 from functions.validators import validate_auth_token
@@ -295,6 +295,8 @@ async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, c
         if conversation.type == "GROUP_DM" and account.settings.skip_groups:
             continue
         elif conversation.type == "GROUP_DM" and not account.settings.skip_groups:
+            if not await has_enough_time_passed(account, conversation.id, account.settings.minutes_before_next_interaction_with_exist, worker_name):
+                continue
             message = await get_message_text(link, account)
             await new_action(account=account, message=message, user_id=None, conversation_id=conversation.id, rt_id=None, unrt_id=None, ban_id=None)
             continue
@@ -306,6 +308,9 @@ async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, c
         tweet = None
 
         if not await has_enough_time_passed(account, user_id, account.settings.minutes_before_next_interaction_with_exist, worker_name):
+            continue
+
+        if not await check_last_message_time(conversation.id, messages, account.settings.minutes_before_next_interaction_with_exist):
             continue
 
         if not await check_user_for_critical(user, account):
