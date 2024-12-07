@@ -5,9 +5,9 @@ from api.twttr_api import TwttrAPIClient
 from api.utools_api import uToolsAPIClient
 from functions.api import get_ct0_by_auth_token, get_model_info, tweet_info
 from functions.basic import add_message
-from functions.data import check_if_model
-from functions.database import (create_database_and_table,
-                                create_shared_database, is_tweet_did)
+from functions.data import check_if_model, get_interlocutor_id, get_user_from_user_list, get_conversation_last_links
+from functions.database import (create_database_and_table, has_enough_time_passed,
+                                create_shared_database, is_user_in_fakers, add_faker, is_tweet_did)
 from functions.validators import validate_auth_token
 from logic.classes import Account, Tweet, User
 from logic.constants import MANAGER_MESSAGE
@@ -53,7 +53,7 @@ async def initialize(twttr_client: TwttrAPIClient, utools_client: uToolsAPIClien
 async def initialize_dm(utools_client:uToolsAPIClient, twttr_client:TwttrAPIClient, account:Account):
     status, maximal_entry, messages, conversations, users = await init_dm(utools_client, twttr_client, account)
     if not status:
-        return False, None
+        return False, None, [], [], []
 
     if not account.settings.work_with_inbox:
         return True, maximal_entry, [], [], []
@@ -153,8 +153,11 @@ async def check_tweet(account:Account, tweet:Tweet):
 
 
 async def add_tweet_to_line(account: Account, tweet:Tweet, worker_name:str=None) -> None:
-#    if await is_tweet_did(account, tweet.id):
- #       return
+    if not tweet:
+        return
+
+    if await is_tweet_did(account, tweet.id):
+        return
 
     if tweet.views < account.settings.min_tweet_views_to_work:
         return
@@ -267,3 +270,77 @@ async def if_user_retweeted(twttr_client: TwttrAPIClient, account: Account, user
             return False
         
         await wait_delay(sec=1)
+
+
+async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, conversations:list, messages:list, users:list, empty_pages:int, link:str=None, worker_name:str=None, inbox:bool=False):
+    for conversation in conversations:
+        await cooldown(twttr_client, account, worker_name)
+
+        if conversation.type == "GROUP_DM" and account.settings.skip_groups:
+            continue
+        elif conversation.type == "GROUP_DM" and not account.settings.skip_groups:
+            continue
+
+        user_id = await get_interlocutor_id(conversation, account.id)
+        user = await get_user_from_user_list(user_id, users)
+
+        model_tweet_id, user_tweet_id = await get_conversation_last_links(conversation.id, account.id, messages)
+        tweet = None
+
+        if not await has_enough_time_passed(account, user_id, account.settings.minutes_before_next_interaction_with_exist, worker_name) and not inbox:
+            continue
+
+        if not await check_user_for_critical(user, account):
+            if account.settings.ban_if_user_banned_you:
+                await new_action(account=account, message=None, user_id=None, rt_id=None, unrt_id=None, ban_id=user_id)
+            continue
+
+        if not await check_user(user, account, dm=True):
+            continue
+
+        if model_tweet_id and account.settings.check_retweets and not await if_user_retweeted(twttr_client, account, user_id, model_tweet_id, worker_name) and not inbox:
+            if await is_user_in_fakers(account, user_id, worker_name):
+                await new_action(account=account, message=f"{random.choice(account.settings.faker_block_text)}", user_id=user_id, rt_id=None, unrt_id=None, ban_id=user_id)
+                continue
+                    
+            await new_action(account=account, message=f"{random.choice(account.settings.warning_text)}", user_id=user_id, rt_id=None, unrt_id=None, ban_id=None)
+            await add_faker(account, user_id, worker_name)
+            continue
+
+        if user_tweet_id:
+            await wait_delay(min_sec=account.settings.min_small_actions_delay, max_sec=account.settings.max_small_actions_delay, worker_name=worker_name)
+            tweet = await tweet_info(twttr_client, account, user_tweet_id, worker_name)
+
+        if len(account.settings.links) >= 1:
+            link = await get_link_to_promote(twttr_client, account, worker_name)
+        if not link:
+            return -1
+            
+        empty_pages = 0
+
+        if not tweet:
+            user.pinned_tweet = await get_pinned_tweet(twttr_client, account, user)
+            tweet = user.pinned_tweet
+            message = await get_message_text(link, account, did_pinned=True)
+
+        if not tweet and not inbox:
+            message = await get_message_text(link, account, no_tweet=True)
+            await new_action(account=account, message=message, user_id=user_id, rt_id=None, unrt_id=None, ban_id=None)
+            continue
+
+        if account.settings.enable_nu_worker:
+            await add_tweet_to_line(account, tweet, worker_name)
+
+        if tweet and not await check_tweet(account, tweet):
+            if account.settings.ban_id_bad_post:
+                await new_action(account=account, message=None, user_id=None, rt_id=None,unrt_id=None, ban_id=user_id,)
+            continue
+
+        if not inbox:
+            message = await get_message_text(link, account)
+            await new_action(account=account, message=message, user_id=user_id, rt_id=tweet.id, unrt_id=tweet.id if tweet.retweeted else None, ban_id=None)
+        else:
+            message = await get_message_text(link, account, inbox)
+            await new_action(account=account, message=message, user_id=user_id, rt_id=None, unrt_id=None, ban_id=None)
+    
+    return empty_pages

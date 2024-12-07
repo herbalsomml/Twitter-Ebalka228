@@ -22,6 +22,7 @@ class Settings:
                  new_user_only_after_exist:bool=False,
                  do_self_rts:bool=False,
                  max_followers_to_work:int=400000,
+                 work_with_inbox:bool=True,
 
                  banned_words_in_tweet:list=BANNED_WORDS,
                  skip_lang:list=[],
@@ -69,6 +70,7 @@ class Settings:
         self.cooldown_every_steps = cooldown_every_steps
         self.new_user_only_after_exist = new_user_only_after_exist
         self.do_self_rts = do_self_rts
+        self.work_with_inbox = work_with_inbox
         
         ## Ограничители
         self.followers_to_work = followers_to_work

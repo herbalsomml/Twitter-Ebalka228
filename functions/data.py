@@ -406,6 +406,9 @@ async def check_last_message_time(conversation_id, messages, minutes_before_next
 async def check_conversation(account:Account, conversation, messages, worker_name:str=None):
     if conversation.read_only:
         return False
+
+    if not await check_last_message_time(conversation.id, messages, account.settings.minutes_before_next_interaction_with_exist):
+        return False
     
     if not conversation.trusted:
         return False
@@ -417,9 +420,6 @@ async def check_conversation(account:Account, conversation, messages, worker_nam
             return False
 
     if await is_user_in_blacklist(account, user_id, worker_name):
-        return False
-    
-    if not await has_enough_time_passed(account, user_id, account.settings.minutes_before_next_interaction_with_exist, worker_name):
         return False
 
     if account.settings.skip_readed and conversation.max_entry_id <= conversation.last_read_event_id:
@@ -433,8 +433,6 @@ async def get_sorted_conversations(account:Account, messages, conversations, wor
     for msg in messages:
         for conversation in conversations:
             if not await check_conversation(account, conversation, messages, worker_name):
-                continue
-            if not await check_last_message_time(conversation.id, messages, account.settings.minutes_before_next_interaction_with_exist):
                 continue
             if msg.conversation_id == conversation.id and conversation not in sorted_conversations:
                 sorted_conversations.append(conversation)

@@ -92,18 +92,18 @@ async def init_dm(utools_client:uToolsAPIClient, twttr_client:TwttrAPIClient, ac
 
         if not status:
             add_message("Не удалось проинициализировать DM", account.screen_name, account.color, "error", worker_name)
-            return False, None
+            return False, None, [], [], []
         maximal_entry = await get_maximal_entry_id(conversations)
-        return True, maximal_entry
+        return True, maximal_entry, messages, conversations, users
     except Exception as e:
         add_message(f"Ошибка при инициализации DM: {e}", account.screen_name, account.color, "error", worker_name)
         await check_automated(e, account)
         await check_banned(e, account)
-        return False, None
+        return False, None, [], [], []
     
 
 async def get_dms(utools_client:uToolsAPIClient, twttr_client:TwttrAPIClient, account:Account, max_id:int=None, worker_name:str=None):
-    try:
+ #   try:
         if not max_id:
             return None, [], [], []
         add_message(f"Получаю список диалогов...", account.screen_name, account.color, "log", worker_name)
@@ -119,11 +119,11 @@ async def get_dms(utools_client:uToolsAPIClient, twttr_client:TwttrAPIClient, ac
         conversations = await get_sorted_conversations(account, messages, conversations, worker_name)
         
         return min_entry_id, messages, conversations, users
-    except Exception as e:
-        add_message(f"Ошибка при получении списка DM: {e}", account.screen_name, account.color, "error", worker_name)
-        await check_automated(e, account)
-        await check_banned(e, account)
-        return None, [], [], []
+ #   except Exception as e:
+  #      add_message(f"Ошибка при получении списка DM: {e}", account.screen_name, account.color, "error", worker_name)
+   #     await check_automated(e, account)
+    #    await check_banned(e, account)
+     #   return None, [], [], []
     
 
 async def retweet(twttr_client:TwttrAPIClient, account:Account, tweet_id:int):

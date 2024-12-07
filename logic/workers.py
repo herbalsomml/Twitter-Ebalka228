@@ -6,105 +6,58 @@ from functions.api import (get_dms,
                            get_reposted_timeline, init_dm, tweet_info)
 from functions.basic import add_message, send_telegram_message, wait_delay
 from functions.data import (get_conversation_last_links, get_interlocutor_id,
-                            get_user_from_user_list)
+                            get_user_from_user_list, check_last_message_time)
 from functions.database import (add_tweet_to_db, has_enough_time_passed,
                                 is_user_in_blacklist, is_user_in_db, add_faker, is_user_in_fakers)
 from functions.workers import (add_tweet_to_line,
                                check_tweet, check_user,
                                check_user_for_critical, cooldown, do_action,
                                get_link_to_promote, get_message_text,
-                               get_pinned_tweet, initialize, new_action, if_user_retweeted)
+                               get_pinned_tweet, initialize, new_action, if_user_retweeted, initialize_dm, procces_conversations)
 from logic.classes import Account
 from logic.exceptions import AccountBanned
 import random
 
 
-async def dm_worker(twttr_client: TwttrAPIClient, utools_client: uToolsAPIClient, account: Account, id_for_pagination:int, WORKER_NAME:str):
+async def dm_worker(twttr_client: TwttrAPIClient, utools_client: uToolsAPIClient, account: Account, WORKER_NAME:str):
     await cooldown(twttr_client, account, WORKER_NAME)
-    page = 1
-    no_msg = 0
+    init_status, id_for_pagination, messages, conversations, users = await initialize_dm(utools_client, twttr_client, account)
+    if not init_status:
+        add_message("Не удалось проинициализировать DM", account.screen_name, account.color, type="error")
+        return False
+    
+    link = None
+    if len(account.settings.links) < 1:
+        link = await get_link_to_promote(twttr_client, account, WORKER_NAME)
+
+    s = await procces_conversations(twttr_client, account, conversations, messages, users, 0, link, WORKER_NAME, inbox=True)
+
+    if s == -1:
+        return False
+    
+    empty_pages = 0
     while True:
         await cooldown(twttr_client, account, WORKER_NAME)
-       # await wait_delay(min_sec=account.settings.min_actions_delay, max_sec=account.settings.max_actions_delay, worker_name=WORKER_NAME)
         id_for_pagination, messages, conversations, users = await get_dms(utools_client, twttr_client, account, id_for_pagination, WORKER_NAME)
         if not id_for_pagination:
             return False
         
+        link = None
         if len(account.settings.links) < 1:
             link = await get_link_to_promote(twttr_client, account, WORKER_NAME)
 
         if len(conversations) < 1:
-            no_msg += 1
+            empty_pages += 1
 
-        if no_msg >= account.settings.skip_after_empty_pages:
+        if empty_pages >= account.settings.skip_after_empty_pages:
             return True
+        
+        empty_pages = await procces_conversations(twttr_client, account, conversations, messages, users, empty_pages, link, WORKER_NAME)
 
-        for conversation in conversations:
-            await cooldown(twttr_client, account, WORKER_NAME)
-
-           # await wait_delay(min_sec=account.settings.min_actions_delay, max_sec=account.settings.max_actions_delay, worker_name=WORKER_NAME)
-            if conversation.type == "GROUP_DM" and account.settings.skip_groups:
-                continue
-            elif conversation.type == "GROUP_DM" and not account.settings.skip_groups:
-                continue
-
-            user_id = await get_interlocutor_id(conversation, account.id)
-            user = await get_user_from_user_list(user_id, users)
-
-            model_tweet_id, user_tweet_id = await get_conversation_last_links(conversation.id, account.id, messages)
-            tweet = None
-
-            if not await check_user_for_critical(user, account):
-                if account.settings.ban_if_user_banned_you:
-                    await new_action(account=account, message=None, user_id=None, rt_id=None, unrt_id=None, ban_id=user_id)
-                continue
-
-            if not await check_user(user, account, dm=True):
-                continue
-
-            if model_tweet_id and account.settings.check_retweets and not await if_user_retweeted(twttr_client, account, user_id, model_tweet_id, WORKER_NAME):
-                if await is_user_in_fakers(account, user_id, WORKER_NAME):
-                    await new_action(account=account, message=f"{random.choice(account.settings.faker_block_text)}", user_id=user_id, rt_id=None, unrt_id=None, ban_id=user_id)
-                    continue
-                    
-                print("скип")
-                await new_action(account=account, message=f"{random.choice(account.settings.warning_text)}", user_id=user_id, rt_id=None, unrt_id=None, ban_id=None)
-                await add_faker(account, user_id, WORKER_NAME)
-                continue
-
-            if user_tweet_id:
-                await wait_delay(min_sec=account.settings.min_small_actions_delay, max_sec=account.settings.max_small_actions_delay, worker_name=WORKER_NAME)
-                tweet = await tweet_info(twttr_client, account, user_tweet_id, WORKER_NAME)
-
-            if len(account.settings.links) >= 1:
-                link = await get_link_to_promote(twttr_client, account, WORKER_NAME)
-            if not link:
-                return False
-            
-            no_msg = 0
-
-            if not tweet:
-                user.pinned_tweet = await get_pinned_tweet(twttr_client, account, user)
-                tweet = user.pinned_tweet
-                message = await get_message_text(link, account, did_pinned=True)
-
-            if not tweet:
-                message = await get_message_text(link, account, no_tweet=True)
-                await new_action(account=account, message=message, user_id=user_id, rt_id=None, unrt_id=None, ban_id=None)
-                continue
-
-            await add_tweet_to_line(account, tweet, WORKER_NAME)
-
-            if not await check_tweet(account, tweet):
-                if account.settings.ban_id_bad_post:
-                    await new_action(account=account, message=None, user_id=None, rt_id=None,unrt_id=None, ban_id=user_id,)
-                continue
-
-            message = await get_message_text(link, account)
-            await new_action(account=account, message=message, user_id=user_id, rt_id=tweet.id, unrt_id=tweet.id if tweet.retweeted else None, ban_id=None)
+        if empty_pages == -1:
+            return False
 
         await wait_delay(min_sec=account.settings.min_actions_delay, max_sec=account.settings.max_actions_delay, worker_name=WORKER_NAME)
-        page += 1
 
 
 async def new_users_worker(twttr_client: TwttrAPIClient, account: Account, WORKER_NAME:str):
@@ -229,40 +182,38 @@ async def main_worker(account):
     tasks = []
 
     async def run_worker(worker_name, worker_func):
-        task = asyncio.create_task(worker_func())
-        tasks.append(task)
         
         while True:
-            try:
+         #   try:
                 task = asyncio.create_task(worker_func())
                 tasks.append(task)
                 await task
                 await asyncio.sleep(30)
-            except AccountBanned as e:
-                stop_worker.set()
-                add_message(
-                    f"✋ Воркер {worker_name} Остановлен",
-                    account.screen_name,
-                    account.color,
-                    "error",
-                )
-                send_telegram_message(
-                    f"✋ Воркер {worker_name} Остановлен",
-                    account.screen_name,
-                )
-            except Exception as e:
-                add_message(
-                    f"❌ {worker_name} завершился с ошибкой: {e}",
-                    account.screen_name,
-                    account.color,
-                    "error",
-                )
-                send_telegram_message(
-                    f"❌ {worker_name} завершился с ошибкой: {e}",
-                account.screen_name,
-                )
+        #    except AccountBanned as e:
+         #       stop_worker.set()
+          #      add_message(
+           #         f"✋ Воркер {worker_name} Остановлен",
+            #        account.screen_name,
+             #       account.color,
+              #      "error",
+              #  )
+              #  send_telegram_message(
+              #      f"✋ Воркер {worker_name} Остановлен",
+              #      account.screen_name,
+              #  )
+           # except Exception as e:
+           #     add_message(
+           #         f"❌ {worker_name} завершился с ошибкой: {e}",
+           #         account.screen_name,
+           #         account.color,
+           #         "error",
+           #     )
+           #     send_telegram_message(
+           #         f"❌ {worker_name} завершился с ошибкой: {e}",
+           #     account.screen_name,
+           #     )
 
-                await asyncio.sleep(15)
+           #     await asyncio.sleep(15)
 
     async def stop_all_tasks():
         for task in tasks:
@@ -275,11 +226,12 @@ async def main_worker(account):
 
     async def run_dm_worker():
         WORKER_NAME = "DM"
-        if account.settings.enable_dm_worker:
-            status, id_for_pagination = await init_dm(utools_client, twttr_client, account)
-            if not status:
-                raise Exception("Ошибка инициализации DM")
-            await run_worker(WORKER_NAME, lambda: dm_worker(twttr_client, utools_client, account, id_for_pagination, WORKER_NAME))
+     #   if account.settings.enable_dm_worker:
+            
+       #     status, id_for_pagination = await init_dm(utools_client, twttr_client, account)
+       #     if not status:
+        #        raise Exception("Ошибка инициализации DM")
+        await run_worker(WORKER_NAME, lambda: dm_worker(twttr_client, utools_client, account, WORKER_NAME))
 
     async def run_new_users_worker():
         WORKER_NAME = "NU"
@@ -293,9 +245,9 @@ async def main_worker(account):
     try:
         await asyncio.gather(
             run_dm_worker(),
-            run_new_users_worker(),
-            run_cooldown_controller(),
-            run_actions_maker_worker(),
+           # run_new_users_worker(),
+           # run_cooldown_controller(),
+           # run_actions_maker_worker(),
         )
     except AccountBanned:
         await twttr_client.close()
