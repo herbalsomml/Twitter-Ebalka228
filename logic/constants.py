@@ -38,7 +38,10 @@ SOCIAL = [
 ]
 
 MANAGER_MESSAGE = [
-    f"Cheap management - {random.choice(MANAGER_NICKNAME)} ({random.choice(SOCIAL)})"
+    f"Ready to buy your account - {random.choice(MANAGER_NICKNAME)} ({random.choice(SOCIAL)})",
+    f"I can buy account - {random.choice(MANAGER_NICKNAME)} ({random.choice(SOCIAL)})",
+    f"I want to buy your account - {random.choice(MANAGER_NICKNAME)} ({random.choice(SOCIAL)})",
+   # f"Best RT tool - {random.choice(MANAGER_NICKNAME)} ({random.choice(SOCIAL)})",
 ]
 
 ##############

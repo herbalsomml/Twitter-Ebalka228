@@ -2,6 +2,7 @@ from api.twttr_api import TwttrAPIClient
 from api.utools_api import uToolsAPIClient
 from logic.classes import Account
 from logic.exceptions import Error, AccountBanned
+import asyncio
 
 from .basic import add_message, send_telegram_message
 from .data import (
@@ -47,6 +48,7 @@ async def with_retries(func, max_retries=3, *args, **kwargs):
             if try_number == max_retries:
                 raise
             try_number += 1
+            await asyncio.sleep(3)
 
 async def send_dm(twttr_client: TwttrAPIClient, account: Account, message: str, user_id: int = "", conversation_id: int = "", username: str = "", media_id: int = ""):
     async def send_message():

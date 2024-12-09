@@ -4,7 +4,7 @@ from api.twttr_api import TwttrAPIClient
 from api.utools_api import uToolsAPIClient
 from functions.api import (get_dms,
                            get_reposted_timeline, init_dm, tweet_info)
-from functions.basic import add_message, send_telegram_message, wait_delay
+from functions.basic import add_message, send_telegram_message, wait_delay, add_debug
 from functions.data import (get_conversation_last_links, get_interlocutor_id,
                             get_user_from_user_list, check_last_message_time)
 from functions.database import (add_tweet_to_db, has_enough_time_passed,
@@ -21,8 +21,8 @@ import random
 
 async def dm_worker(twttr_client: TwttrAPIClient, utools_client: uToolsAPIClient, account: Account, WORKER_NAME:str):
     await cooldown(twttr_client, account, WORKER_NAME)
-    init_status, id_for_pagination, messages, conversations, users = await initialize_dm(utools_client, twttr_client, account)
-    if not init_status:
+    id_for_pagination, messages, conversations, users = await initialize_dm(utools_client, twttr_client, account)
+    if not id_for_pagination:
         add_message("Не удалось проинициализировать DM", account.screen_name, account.color, type="error")
         return False
     
@@ -41,10 +41,6 @@ async def dm_worker(twttr_client: TwttrAPIClient, utools_client: uToolsAPIClient
         id_for_pagination, messages, conversations, users = await get_dms(utools_client, twttr_client, account, id_for_pagination, WORKER_NAME)
         if not id_for_pagination:
             return False
-        
-        link = None
-        if len(account.settings.links) < 1:
-            link = await get_link_to_promote(twttr_client, account, WORKER_NAME)
 
         if len(conversations) < 1:
             empty_pages += 1
@@ -52,10 +48,16 @@ async def dm_worker(twttr_client: TwttrAPIClient, utools_client: uToolsAPIClient
         if empty_pages >= account.settings.skip_after_empty_pages:
             return True
         
-        empty_pages = await procces_conversations(twttr_client, account, conversations, messages, users, empty_pages, link, WORKER_NAME)
+        if len(conversations) >= 1:
+            link = None
+            if len(account.settings.links) < 1:
+                link = await get_link_to_promote(twttr_client, account, WORKER_NAME)
 
-        if empty_pages == -1:
-            return False
+            s = await procces_conversations(twttr_client, account, conversations, messages, users, empty_pages, link, WORKER_NAME)
+            empty_pages = 0
+
+            if s == -1:
+                return False
 
         await wait_delay(min_sec=account.settings.min_actions_delay, max_sec=account.settings.max_actions_delay, worker_name=WORKER_NAME)
 
@@ -71,7 +73,7 @@ async def new_users_worker(twttr_client: TwttrAPIClient, account: Account, WORKE
             tweet_id = int(tweet_id)
             tweet = await tweet_info(twttr_client, account, tweet_id, WORKER_NAME)
             if tweet:
-                await add_tweet_to_line(account, tweet)
+                account.tweets_for_work.append(tweet)
             else:
                 add_message("Не удалось получить информацию о твите", account.screen_name, account.color, WORKER_NAME)
         except:
@@ -149,6 +151,8 @@ async def action_maker_worker(twttr_client: TwttrAPIClient, account: Account, WO
         if action_status:
             account.done_actions_counter += 1
 
+        add_message(f"Выполнено: {account.done_actions_counter}", account.screen_name, account.color, "log")
+
 
 async def cooldown_controller(account:Account):
     while True:
@@ -182,38 +186,38 @@ async def main_worker(account):
     tasks = []
 
     async def run_worker(worker_name, worker_func):
-        
         while True:
-         #   try:
+            try:
                 task = asyncio.create_task(worker_func())
                 tasks.append(task)
                 await task
-                await asyncio.sleep(30)
-        #    except AccountBanned as e:
-         #       stop_worker.set()
-          #      add_message(
-           #         f"✋ Воркер {worker_name} Остановлен",
-            #        account.screen_name,
-             #       account.color,
-              #      "error",
-              #  )
-              #  send_telegram_message(
-              #      f"✋ Воркер {worker_name} Остановлен",
-              #      account.screen_name,
-              #  )
-           # except Exception as e:
-           #     add_message(
-           #         f"❌ {worker_name} завершился с ошибкой: {e}",
-           #         account.screen_name,
-           #         account.color,
-           #         "error",
-           #     )
-           #     send_telegram_message(
-           #         f"❌ {worker_name} завершился с ошибкой: {e}",
-           #     account.screen_name,
-           #     )
+                await asyncio.sleep(15)
+            except AccountBanned as e:
+                stop_worker.set()
+                add_message(
+                    f"✋ Воркер {worker_name} Остановлен",
+                    account.screen_name,
+                    account.color,
+                    "error",
+                )
+                send_telegram_message(
+                    f"✋ Воркер {worker_name} Остановлен",
+                    account.screen_name,
+                )
+            except Exception as e:
+                add_message(
+                    f"❌ {worker_name} завершился с ошибкой: {e}",
+                    account.screen_name,
+                    account.color,
+                    "error",
+                )
+                send_telegram_message(
+                    f"❌ {worker_name} завершился с ошибкой: {e}",
+                account.screen_name,
+                )
 
-           #     await asyncio.sleep(15)
+                add_debug(f"Перезапуск...", account.screen_name, account.color, worker_name)
+                await asyncio.sleep(15)
 
     async def stop_all_tasks():
         for task in tasks:

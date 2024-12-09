@@ -25,7 +25,7 @@ async def main():
 
 
 if __name__ == "__main__":
-  #  try:
+    try:
         asyncio.run(main())
-   # except Exception as e:
-     #   print(Fore.RED + f"Ошибка выполнения: {e}" + Style.RESET_ALL)
+    except Exception as e:
+        print(Fore.RED + f"Ошибка выполнения: {e}" + Style.RESET_ALL)

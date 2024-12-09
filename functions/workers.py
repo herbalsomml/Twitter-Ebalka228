@@ -53,14 +53,21 @@ async def initialize(twttr_client: TwttrAPIClient, utools_client: uToolsAPIClien
 async def initialize_dm(utools_client:uToolsAPIClient, twttr_client:TwttrAPIClient, account:Account):
     status, maximal_entry, messages, conversations, users = await init_dm(utools_client, twttr_client, account)
     if not status:
-        return False, None, [], [], []
+        return None, [], [], []
 
-    if not account.settings.work_with_inbox:
-        return True, maximal_entry, [], [], []
+    if  account.settings.skip_inbox:
+        return maximal_entry, [], [], []
 
-    return True, maximal_entry, messages, conversations, users
+    return maximal_entry, messages, conversations, users
 
-async def check_user(user:User, account:Account, dm=False, dbg:bool=False):
+async def check_user(user:User, account:Account, dm=False, dbg:bool=False, inbox:bool=False):
+    if dm and not inbox:
+        checker = False
+    elif dm and inbox:
+        checker = True
+    elif not dm:
+        checker = True
+
     if user.id == account.id:
         add_debug("Это я", account.screen_name, account.color, dbg=dbg)
         return False
@@ -69,11 +76,11 @@ async def check_user(user:User, account:Account, dm=False, dbg:bool=False):
         add_debug("Нет пользователя", account.screen_name, account.color, dbg=dbg)
         return False
     
-    if user.followers_count < account.settings.followers_to_work:
+    if user.followers_count < account.settings.followers_to_work and checker:
         add_debug(f"Мало подписоты (@{user.screen_name}): {user.followers_count}/{account.settings.followers_to_work}", account.screen_name, account.color, dbg=dbg)
         return False
     
-    if user.followers_count > account.settings.max_followers_to_work and not dm:
+    if user.followers_count > account.settings.max_followers_to_work and checker and not inbox:
         add_debug("Слишком много подписоты", account.screen_name, account.color, dbg=dbg)
         return False
     
@@ -107,7 +114,10 @@ async def check_user_for_critical(user, account):
  
 async def get_link_to_promote(twttr_client:TwttrAPIClient, account: Account, worker_name:str=None):
     if len(account.settings.links) > 0:
-        link = random.choice(account.settings.links)
+        account.did_links += 1
+        link = account.settings.links[account.did_links-1]
+        if account.did_links == len(account.settings.links):
+            account.did_links = 0
     else:
         status, id, name, screen_name, followers_count, pinned_tweet_id = await get_model_info(twttr_client, account, worker_name)
 
@@ -289,13 +299,14 @@ async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, c
 
         if len(account.settings.links) >= 1:
             link = await get_link_to_promote(twttr_client, account, worker_name)
+
         if not link:
             return -1
 
         if conversation.type == "GROUP_DM" and account.settings.skip_groups:
             continue
         elif conversation.type == "GROUP_DM" and not account.settings.skip_groups:
-            if not await has_enough_time_passed(account, conversation.id, account.settings.minutes_before_next_interaction_with_exist, worker_name):
+            if not await has_enough_time_passed(account, conversation.id, account.settings.minutes_before_next_interaction_with_group, worker_name):
                 continue
             message = await get_message_text(link, account)
             await new_action(account=account, message=message, user_id=None, conversation_id=conversation.id, rt_id=None, unrt_id=None, ban_id=None)
@@ -308,20 +319,28 @@ async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, c
         tweet = None
 
         if not await has_enough_time_passed(account, user_id, account.settings.minutes_before_next_interaction_with_exist, worker_name):
+            print("Время 1")
             continue
 
-        if not await check_last_message_time(conversation.id, messages, account.settings.minutes_before_next_interaction_with_exist):
-            continue
+      #  if not await check_last_message_time(conversation.id, messages, account.settings.minutes_before_next_interaction_with_exist):
+       #     print("Время")
+        #    continue
 
         if not await check_user_for_critical(user, account):
             if account.settings.ban_if_user_banned_you:
                 await new_action(account=account, message=None, user_id=None, conversation_id=None, rt_id=None, unrt_id=None, ban_id=user_id)
             continue
 
-        if not await check_user(user, account, dm=True):
+        if not await check_user(user, account, dm=True, dbg=True, inbox=inbox):
             continue
 
+        message = await get_message_text(link, account)
+
         if model_tweet_id and account.settings.check_retweets and not await if_user_retweeted(twttr_client, account, user_id, model_tweet_id, worker_name) and not inbox:
+            if account.settings.send_msg_if_not_rt:
+                await new_action(account=account, message=message, user_id=user_id)
+                continue
+
             if await is_user_in_fakers(account, user_id, worker_name):
                 await new_action(account=account, message=f"{random.choice(account.settings.faker_block_text)}", user_id=user_id, conversation_id=None, rt_id=None, unrt_id=None, ban_id=user_id)
                 continue
@@ -350,9 +369,12 @@ async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, c
             await add_tweet_to_line(account, tweet, worker_name)
 
         if tweet and not await check_tweet(account, tweet):
-            if account.settings.ban_id_bad_post:
+            if account.settings.ban_if_bad_post:
                 await new_action(account=account, message=None, user_id=None, conversation_id=None, rt_id=None,unrt_id=None, ban_id=user_id,)
-            continue
+                continue
+            elif account.settings.send_msg_if_bad_post:
+                await new_action(account=account, message=message, user_id=user_id)
+                continue
 
         if not inbox:
             message = await get_message_text(link, account)
@@ -361,4 +383,5 @@ async def procces_conversations(twttr_client:TwttrAPIClient, account: Account, c
             message = await get_message_text(link, account, inbox=True)
             await new_action(account=account, message=message, user_id=user_id, conversation_id=None, rt_id=None, unrt_id=None, ban_id=None)
     
+    print(empty_pages)
     return empty_pages

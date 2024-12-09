@@ -61,7 +61,7 @@ settings = Settings(
         "https://pornhub.com/"
     ],
     
-    ban_id_bad_post=True,
+    ban_if_bad_post=True,
     ban_if_user_banned_you=True,
     skip_after_empty_pages=50,
     actions_steps=5,

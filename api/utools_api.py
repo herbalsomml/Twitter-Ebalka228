@@ -56,7 +56,7 @@ class uToolsAPIClient:
                         if code == 0:
                             if "If your parameters contain auth_token, please check whether the account status is normal." in msg:
                                 add_debug("Глюк utools, новая попытка")
-                                asyncio.sleep(5)
+                                await asyncio.sleep(5)
                                 continue
                             raise Error(msg)
                         return d

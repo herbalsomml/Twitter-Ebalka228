@@ -6,7 +6,8 @@ class Settings:
                  links:list=[],
                  post_ids_for_cooldown_rt:list=[],
 
-                 ban_id_bad_post:bool=True,
+                 ban_if_bad_post:bool=False,
+                 send_msg_if_bad_post:bool=True,
                  ban_if_user_banned_you:bool=True,
                  skip_after_empty_pages:int=15,
                  actions_steps:int=2,
@@ -22,7 +23,6 @@ class Settings:
                  new_user_only_after_exist:bool=False,
                  do_self_rts:bool=False,
                  max_followers_to_work:int=400000,
-                 work_with_inbox:bool=True,
 
                  banned_words_in_tweet:list=BANNED_WORDS,
                  skip_lang:list=[],
@@ -31,6 +31,7 @@ class Settings:
 
                  skip_hidden_ads:bool=True,
                  check_retweets:bool=True,
+                 send_msg_if_not_rt:bool=True,
                  skip_readed:bool=True,
                  skip_groups:bool=True,
                  skip_inbox:bool=True,
@@ -46,6 +47,7 @@ class Settings:
                  faker_block_text:list=FAKER_BLOCK_TEXT,
 
                  minutes_before_next_interaction_with_exist:int=60,
+                 minutes_before_next_interaction_with_group:int=180,
                  minutes_before_attempt_for_new_dm:int=10080,
                  min_actions_delay:int=10,
                  max_actions_delay:int=20,
@@ -63,14 +65,15 @@ class Settings:
         self.post_ids_for_cooldown_rt = post_ids_for_cooldown_rt
 
         ## Настройки
-        self.ban_id_bad_post = ban_id_bad_post
+        self.ban_if_bad_post = ban_if_bad_post
+        self.send_msg_if_bad_post = send_msg_if_bad_post
         self.ban_if_user_banned_you = ban_if_user_banned_you
         self.skip_after_empty_pages = skip_after_empty_pages
         self.actions_steps = actions_steps
         self.cooldown_every_steps = cooldown_every_steps
         self.new_user_only_after_exist = new_user_only_after_exist
         self.do_self_rts = do_self_rts
-        self.work_with_inbox = work_with_inbox
+        self.minutes_before_next_interaction_with_group = minutes_before_next_interaction_with_group
         
         ## Ограничители
         self.followers_to_work = followers_to_work
@@ -91,6 +94,7 @@ class Settings:
         ### Функции
         self.skip_hidden_ads = skip_hidden_ads
         self.check_retweets = check_retweets
+        self.send_msg_if_not_rt = send_msg_if_not_rt
         self.skip_readed = skip_readed
         self.skip_groups = skip_groups
         self.skip_inbox = skip_inbox
@@ -152,7 +156,7 @@ class Account:
         self.soft_detected = False
 
         self.self_rts = False
-
+        self.did_links = 0
 
 class User:
     def __init__(self, id, name, screen_name, followers_count, description, urls, blocking, dm_blocking, dm_blocked_by, is_blue_verified, created_at, can_dm, pinned_tweet_id):
