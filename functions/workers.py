@@ -256,10 +256,11 @@ async def cooldown(twttr_client: TwttrAPIClient, account: Account, worker_name:s
                     break
                 await wait_delay(min_sec=account.settings.min_actions_delay, max_sec=account.settings.max_actions_delay)
                 tweet = await tweet_info(twttr_client, account, id)
-                if tweet.retweeted:
-                    await unretweet(twttr_client, account, id)
-                    await wait_delay(min_sec=account.settings.min_small_actions_delay, max_sec=account.settings.max_small_actions_delay)
-                await retweet(twttr_client, account, id)
+                if tweet:
+                    if tweet.retweeted:
+                        await unretweet(twttr_client, account, id)
+                        await wait_delay(min_sec=account.settings.min_small_actions_delay, max_sec=account.settings.max_small_actions_delay)
+                    await retweet(twttr_client, account, id)
                 i += 1
                 add_message(f"{i}/{len(account.settings.post_ids_for_cooldown_rt) if len(account.settings.post_ids_for_cooldown_rt) < account.settings.max_self_rts_amount else account.settings.max_self_rts_amount} селф-рт сделано", account.screen_name, account.color, "warning", worker_name)
 
