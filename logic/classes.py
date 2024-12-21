@@ -154,6 +154,7 @@ class Account:
         self.done_actions_counter = 0
         self.is_cooldown = False
         self.soft_detected = False
+        self.rate_limit = False
 
         self.self_rts = False
         self.did_links = 0

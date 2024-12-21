@@ -275,6 +275,10 @@ async def cooldown(twttr_client: TwttrAPIClient, account: Account, worker_name:s
         await wait_delay(account.settings.if_detected_cooldown_seconds)
         account.soft_detected = False
 
+    if account.rate_limit:
+        await wait_delay(43200)
+        account.rate_limit = False
+
 
 async def if_user_retweeted(twttr_client: TwttrAPIClient, account: Account, user_id: int, tweet_id: int, WORKER_NAME:str=None):
     cursor = ""
