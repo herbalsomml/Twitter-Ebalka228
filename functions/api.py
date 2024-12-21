@@ -36,6 +36,10 @@ async def handle_error(e: Exception, account: Account, worker_name: str = None):
     if "spam" in error_message or "retricted" in error_message:
         send_telegram_message(f"🚨 АККАУНТ ЗАБЛОКИРОВАН! 🚨", account.screen_name)
         raise AccountBanned("Аккаунт заблокирован")
+    if "Sender is not verified and their rate limit has been exceeded" in error_message:
+        account.soft_detected = True
+        send_telegram_message(f"🕔 Превышен лимит - кулдаун", account.screen_name)
+
     add_message(f"Ошибка: {error_message}", account.screen_name, account.color, "error", worker_name)
 
 async def with_retries(func, max_retries=3, *args, **kwargs):
